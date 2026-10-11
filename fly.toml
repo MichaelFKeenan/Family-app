@@ -1,0 +1,28 @@
+# Fly.io deployment (ADR-015). Rename `app` to your own globally unique name before the first deploy.
+app = "family-board-change-me"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Stop the machine when idle and start it on the next request: pennies instead of an always-on VM,
+  # at the cost of a cold start of a second or two after quiet spells (ADR-019).
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    # Liveness only: never wakes the database (ADR-019).
+    method = "GET"
+    path = "/api/health/live"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"

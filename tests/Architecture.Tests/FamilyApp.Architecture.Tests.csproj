@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SharedKernel\FamilyApp.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\FamilyApp.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Households\FamilyApp.Modules.Households.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Tasks\FamilyApp.Modules.Tasks.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Shopping\FamilyApp.Modules.Shopping.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Points\FamilyApp.Modules.Points.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- The one deployable (ADR-001). Wires modules together; holds no business logic. -->
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SharedKernel\FamilyApp.SharedKernel.csproj" />
+    <ProjectReference Include="..\Modules\Identity\FamilyApp.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Modules\Households\FamilyApp.Modules.Households.csproj" />
+    <ProjectReference Include="..\Modules\Tasks\FamilyApp.Modules.Tasks.csproj" />
+    <ProjectReference Include="..\Modules\Shopping\FamilyApp.Modules.Shopping.csproj" />
+    <ProjectReference Include="..\Modules\Points\FamilyApp.Modules.Points.csproj" />
+  </ItemGroup>
+</Project>

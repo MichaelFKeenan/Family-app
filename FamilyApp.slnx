@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Host/FamilyApp.Host.csproj" />
+    <Project Path="src/SharedKernel/FamilyApp.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Identity/FamilyApp.Modules.Identity.csproj" />
+    <Project Path="src/Modules/Households/FamilyApp.Modules.Households.csproj" />
+    <Project Path="src/Modules/Tasks/FamilyApp.Modules.Tasks.csproj" />
+    <Project Path="src/Modules/Shopping/FamilyApp.Modules.Shopping.csproj" />
+    <Project Path="src/Modules/Points/FamilyApp.Modules.Points.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Architecture.Tests/FamilyApp.Architecture.Tests.csproj" />
+    <Project Path="tests/Integration.Tests/FamilyApp.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

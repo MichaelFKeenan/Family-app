@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Built React app copied into the host at publish time
+src/Host/wwwroot/
+
+# Node
+node_modules/
+web/dist/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Local secrets
+.env
+*.local.json
