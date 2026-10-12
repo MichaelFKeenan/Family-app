@@ -9,7 +9,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': 'http://localhost:5080',
-      '/auth': 'http://localhost:5080',
+      // Google redirects back here after sign-in; the .NET host handles it.
+      '/signin-google': 'http://localhost:5080',
     },
   },
 });

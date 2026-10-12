@@ -22,4 +22,6 @@ COPY --from=api /app ./
 COPY --from=web /web/dist ./wwwroot
 USER app
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "FamilyApp.Host.dll"]
+# CMD rather than ENTRYPOINT, so Fly's release command can replace it
+# with `dotnet FamilyApp.Host.dll migrate` (ADR-021).
+CMD ["dotnet", "FamilyApp.Host.dll"]

@@ -6,6 +6,16 @@ primary_region = "lhr"
 [build]
   dockerfile = "Dockerfile"
 
+[deploy]
+  # Runs in a temporary machine before the new version takes traffic.
+  # If a migration fails, the deploy stops and the old version keeps running (ADR-021).
+  release_command = "dotnet FamilyApp.Host.dll migrate"
+
+[env]
+  # Fly terminates TLS and forwards plain http. Trust its X-Forwarded-Proto header so the app
+  # knows requests were really https: needed for Secure cookies and Google's redirect URL.
+  ASPNETCORE_FORWARDEDHEADERS_ENABLED = "true"
+
 [http_service]
   internal_port = 8080
   force_https = true

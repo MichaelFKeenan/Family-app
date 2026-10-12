@@ -1,10 +1,14 @@
+using FamilyApp.Host.Database;
 using FamilyApp.Host.Health;
+using FamilyApp.Host.Security;
 using FamilyApp.Modules.Households;
 using FamilyApp.Modules.Identity;
 using FamilyApp.Modules.Points;
 using FamilyApp.Modules.Shopping;
 using FamilyApp.Modules.Tasks;
 using FamilyApp.SharedKernel;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Npgsql;
 
@@ -20,6 +24,13 @@ IModule[] modules =
     new PointsModule(),
 ];
 
+// Platform scripts first, then each module's, in the order above (ADR-021).
+MigrationSource[] migrationSources =
+[
+    new("platform", typeof(Program).Assembly),
+    .. modules.Select(module => new MigrationSource(module.Name, module.GetType().Assembly)),
+];
+
 // One connection pool for the whole app. Resolved lazily so tests can override configuration.
 builder.Services.AddSingleton(sp =>
 {
@@ -27,6 +38,20 @@ builder.Services.AddSingleton(sp =>
         ?? throw new InvalidOperationException("Connection string 'Postgres' is not configured.");
     return NpgsqlDataSource.Create(connectionString);
 });
+
+builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services.AddSingleton<MigrationRunner>();
+foreach (var source in migrationSources)
+{
+    builder.Services.AddSingleton(source);
+}
+builder.Services.AddHostedService<MigrateOnStartupService>();
+
+// Cookie-encryption keys live in Postgres so they survive restarts and deploys (ADR-023).
+builder.Services.AddDataProtection().SetApplicationName("family-app");
+builder.Services.AddOptions<KeyManagementOptions>()
+    .Configure<NpgsqlDataSource>((options, dataSource) => options.XmlRepository = new PostgresXmlRepository(dataSource));
 
 builder.Services.AddHealthChecks()
     .AddCheck<PostgresHealthCheck>("postgres");
@@ -38,8 +63,19 @@ foreach (var module in modules)
 
 var app = builder.Build();
 
+// `dotnet FamilyApp.Host.dll migrate` applies migrations and exits. Fly runs this as the
+// release command, before the new version receives traffic (ADR-021).
+if (args.Contains("migrate"))
+{
+    await app.Services.GetRequiredService<MigrationRunner>().RunAsync(migrationSources);
+    return;
+}
+
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Liveness: "is the process up?" Runs no checks, so platform probes never wake the database.
 // Neon scales to zero when idle; a probe that queried it every few seconds would keep it awake (ADR-019).
@@ -68,3 +104,6 @@ app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+// Lets the integration tests reference the entry point.
+public partial class Program;

@@ -1,7 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <!-- The one deployable (ADR-001). Wires modules together; holds no business logic. -->
+  <PropertyGroup>
+    <!-- Local secrets (Google client id and secret): dotnet user-secrets, never appsettings. -->
+    <UserSecretsId>family-app-host</UserSecretsId>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Npgsql" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Platform-level SQL migrations (ADR-021). -->
+    <EmbeddedResource Include="Migrations\*.sql" LogicalName="migrations/%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SharedKernel\FamilyApp.SharedKernel.csproj" />

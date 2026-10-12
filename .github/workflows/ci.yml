@@ -67,6 +67,8 @@ jobs:
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       NEON_CONNECTION_STRING: ${{ secrets.NEON_CONNECTION_STRING }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
     steps:
       - name: Check secrets are configured
         id: secrets
@@ -91,10 +93,19 @@ jobs:
           echo "APP=$APP" >> "$GITHUB_ENV"
           flyctl status --app "$APP" > /dev/null 2>&1 || flyctl apps create "$APP" --org personal
 
-      # --stage stores the secret without restarting; the deploy below picks it up.
-      - name: Set the database connection string
+      # --stage stores secrets without restarting; the deploy below picks them up.
+      # Google sign-in is optional: without it the app runs and /login answers 503.
+      - name: Set app secrets
         if: steps.secrets.outputs.ready == 'true'
-        run: flyctl secrets set --stage --app "$APP" "ConnectionStrings__Postgres=$NEON_CONNECTION_STRING"
+        run: |
+          secrets=("ConnectionStrings__Postgres=$NEON_CONNECTION_STRING")
+          if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            secrets+=("Authentication__Google__ClientId=$GOOGLE_CLIENT_ID")
+            secrets+=("Authentication__Google__ClientSecret=$GOOGLE_CLIENT_SECRET")
+          else
+            echo "::notice::Google sign-in not configured: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET secrets."
+          fi
+          flyctl secrets set --stage --app "$APP" "${secrets[@]}"
 
       # --ha=false: one machine, not Fly's default of two (ADR-020).
       - name: Deploy
