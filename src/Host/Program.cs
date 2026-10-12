@@ -41,6 +41,9 @@ builder.Services.AddSingleton(sp =>
 
 builder.Services.AddSingleton(TimeProvider.System);
 
+// Set per request by .RequireHousehold(); read by modules to scope their queries (ADR-009, ADR-026).
+builder.Services.AddScoped<CurrentHousehold>();
+
 builder.Services.AddSingleton<MigrationRunner>();
 foreach (var source in migrationSources)
 {

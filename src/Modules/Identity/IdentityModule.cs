@@ -35,6 +35,7 @@ public sealed class IdentityModule : IModule
         services.AddDbContext<IdentityModuleDbContext>((sp, options) =>
             options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
         services.AddScoped<IdentityService>();
+        services.AddScoped<IUserDirectory, UserDirectory>();
 
         var authentication = services.AddAuthentication(CookieScheme);
 
