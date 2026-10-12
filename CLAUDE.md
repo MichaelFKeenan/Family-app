@@ -2,7 +2,15 @@
 
 A shared task board, shopping list and points leaderboard for one family. It is also a learning project: system design and its trade-offs matter more than shipping speed.
 
-## The design doc is the source of truth
+## Start here: project status
+
+Read the **Status** section of `README.md` before doing anything. It holds what is done, what is next, open questions for the owner, and follow-ups, including things that are not visible in the code (deploy setup, secrets, pending decisions).
+
+- When you finish a step, resolve a question or a follow-up, update that section in the same commit.
+- Keep it short: done, next, open questions, follow-ups. Reasoning belongs in the design doc, not there.
+- If you cannot open the design doc from your environment, the Status section and the ADR numbers referenced in code and docs are your context. Ask the owner rather than guessing at a decision.
+
+## The design doc is the source of truth for decisions
 
 All architecture decisions live as numbered ADRs in the design doc:
 https://claude.ai/code/artifact/d76d14ee-5270-4a19-b9ba-601eaaa58972

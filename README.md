@@ -4,6 +4,35 @@ A family to-do board, permanent shopping list and points leaderboard. Built as a
 
 Design doc and decision log: https://claude.ai/code/artifact/d76d14ee-5270-4a19-b9ba-601eaaa58972
 
+## Status
+
+_Last updated: 12 Oct 2026. Update this section in the same commit that finishes a step._
+
+**Live:** https://mfk-family-board.fly.dev (Fly.io, London, one machine; Neon Postgres, London). Every green push to `main` deploys automatically.
+
+**Done**
+
+- Phase 1, step 1: walking skeleton. Modular .NET host with five empty modules, health endpoints, React status page, CI, automatic deploy.
+
+**Next**
+
+- Phase 1, step 2: Identity. Google sign-in, users and login identities, cookie session, `GET /api/me` (ADR-007, ADR-008).
+
+**Open questions**
+
+- Do the children have Google accounts? If not, step 2 needs another way for them to sign in. Ask before building Identity.
+
+**Follow-ups**
+
+- [ ] Reset the Neon database password (it was shared in a chat), then update the `NEON_CONNECTION_STRING` GitHub secret.
+- [ ] Replace the organization-wide `FLY_API_TOKEN` with an app-scoped deploy token (ADR-020).
+- [ ] Commit `web/package-lock.json` after the first local `npm install`, so builds are reproducible.
+
+**Decisions not visible in the code**
+
+- Points go straight to whoever completes a task; no approval step (ADR-016).
+- Hosting stays on a container, not serverless, because SignalR needs long-lived connections (ADR-018).
+
 ## Run it locally
 
 You need the .NET 10 SDK, Node 22 and Docker.
