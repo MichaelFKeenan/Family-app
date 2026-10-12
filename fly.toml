@@ -1,5 +1,6 @@
-# Fly.io deployment (ADR-015). Rename `app` to your own globally unique name before the first deploy.
-app = "family-board-change-me"
+# Fly.io deployment (ADR-015, ADR-020). The app name must be globally unique on Fly;
+# it is also the subdomain: https://mfk-family-board.fly.dev
+app = "mfk-family-board"
 primary_region = "lhr"
 
 [build]

@@ -33,8 +33,14 @@ Integration tests start their own throwaway Postgres in Docker.
 
 ## Deploy (Fly.io + Neon)
 
-1. Create a free Neon project and copy its pooled connection string.
-2. Rename `app` in `fly.toml` to a unique name, then `fly launch --no-deploy`.
-3. `fly secrets set ConnectionStrings__Postgres="<Npgsql connection string>"`.
-4. `fly deploy`.
-5. Visit `https://<app>.fly.dev/api/health`.
+Deployment is automatic: every green push to `main` deploys (ADR-020). One-off setup:
+
+1. Create a Neon project (Postgres only, no Neon Auth). Copy the pooled connection string in .NET format.
+2. Create a Fly.io account and an organization access token.
+3. In GitHub, Settings → Secrets and variables → Actions, add:
+   - `FLY_API_TOKEN`: the Fly token
+   - `NEON_CONNECTION_STRING`: the Neon string
+4. Push to `main`, or re-run the latest CI run. The deploy job creates the Fly app on first run.
+5. Visit https://mfk-family-board.fly.dev/api/health.
+
+Without those secrets, the deploy job skips itself and CI stays green.

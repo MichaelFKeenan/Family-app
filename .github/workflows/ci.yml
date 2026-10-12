@@ -54,3 +54,59 @@ jobs:
 
       - name: Build image
         run: docker build -t family-app:ci .
+
+  # Continuous deployment (ADR-020): every green push to main goes live.
+  deploy:
+    name: Deploy to Fly
+    runs-on: ubuntu-latest
+    needs: [image]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      NEON_CONNECTION_STRING: ${{ secrets.NEON_CONNECTION_STRING }}
+    steps:
+      - name: Check secrets are configured
+        id: secrets
+        run: |
+          if [ -z "$FLY_API_TOKEN" ] || [ -z "$NEON_CONNECTION_STRING" ]; then
+            echo "::notice::Skipping deploy: add FLY_API_TOKEN and NEON_CONNECTION_STRING as repository secrets."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        if: steps.secrets.outputs.ready == 'true'
+
+      - uses: superfly/flyctl-actions/setup-flyctl@1.6
+        if: steps.secrets.outputs.ready == 'true'
+
+      - name: Create the Fly app if it does not exist
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          APP=$(grep -E '^app *=' fly.toml | sed -E 's/^app *= *"([^"]+)".*/\1/')
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          flyctl status --app "$APP" > /dev/null 2>&1 || flyctl apps create "$APP" --org personal
+
+      # --stage stores the secret without restarting; the deploy below picks it up.
+      - name: Set the database connection string
+        if: steps.secrets.outputs.ready == 'true'
+        run: flyctl secrets set --stage --app "$APP" "ConnectionStrings__Postgres=$NEON_CONNECTION_STRING"
+
+      # --ha=false: one machine, not Fly's default of two (ADR-020).
+      - name: Deploy
+        if: steps.secrets.outputs.ready == 'true'
+        run: flyctl deploy --remote-only --ha=false --app "$APP"
+
+      - name: Smoke test
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "https://$APP.fly.dev/api/health"; then echo; exit 0; fi
+            sleep 10
+          done
+          echo "::error::https://$APP.fly.dev/api/health did not report healthy"
+          exit 1
