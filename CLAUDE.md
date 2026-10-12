@@ -21,7 +21,8 @@ https://claude.ai/code/artifact/d76d14ee-5270-4a19-b9ba-601eaaa58972
 
 ## Stack
 
-- .NET 10, ASP.NET Core minimal APIs, PostgreSQL via Npgsql (EF Core arrives with the first real module).
+- .NET 10, ASP.NET Core minimal APIs, PostgreSQL. EF Core (Npgsql provider) for queries and changes, one DbContext per module, but the schema comes from plain SQL migration scripts, not EF migrations (ADR-021).
+- Sign-in: Google via the OpenID Connect handler, then our own 30-day cookie holding only our user id and name (ADR-022). Read the current user with `principal.TryGetUserId(...)` from SharedKernel.
 - React, TypeScript and Vite in `web/`, TanStack Query for server state.
 - One Docker image: the host serves both `/api` and the built React app (same origin, ADR-008, ADR-012).
 - Hosting: Fly.io plus Neon Postgres (ADR-015, ADR-018).
@@ -45,6 +46,8 @@ web/                 React app
 - Primary keys are UUIDv7 (`Guid.CreateVersion7()`, ADR-013).
 - No secrets in the repo; it is public. Production configuration comes from Fly secrets.
 - Platform probes use `/api/health/live`, which never touches the database (ADR-019).
+- Schema changes: add a new numbered script, `src/Modules/<Name>/Migrations/NNNN_description.sql`. Never edit a script that has been deployed; write a new one. Each module owns its own Postgres schema; no foreign keys across modules. Keep the module's EF mapping in step with its scripts; integration tests catch mismatches.
+- Migrations run on startup in Development and tests (`Database:MigrateOnStartup`), and in production only in Fly's release command (`dotnet FamilyApp.Host.dll migrate`).
 
 ## Commands
 
@@ -55,4 +58,4 @@ cd web && npm install && npm run dev       # React on http://localhost:5173, pro
 dotnet test FamilyApp.slnx                 # needs Docker for integration tests
 ```
 
-CI (`.github/workflows/ci.yml`) builds and tests every push. Keep it green.
+CI (`.github/workflows/ci.yml`) builds and tests every push, and deploys green pushes to `main`. Keep it green. Test totals appear as notices on the run, which is handy where raw logs can't be downloaded.

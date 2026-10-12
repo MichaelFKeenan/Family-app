@@ -13,10 +13,12 @@ _Last updated: 12 Oct 2026. Update this section in the same commit that finishes
 **Done**
 
 - Phase 1, step 1: walking skeleton. Modular .NET host with five empty modules, health endpoints, React status page, CI, automatic deploy.
+- Phase 1, step 2: Identity. Google sign-in, users and login identities, 30-day cookie session, `GET /api/identity/me`. Plain SQL migrations run by Fly's release command. Cookie-encryption keys stored in Postgres.
 
 **Next**
 
-- Phase 1, step 2: Identity. Google sign-in, users and login identities, cookie session, `GET /api/me` (ADR-007, ADR-008).
+- Confirm Google sign-in works on the live site (first real sign-in).
+- Phase 1, step 3: Households. Create a household, invite and join, current-household resolver, filter every query by `household_id`, isolation test (ADR-009).
 
 **Follow-ups**
 
@@ -29,6 +31,7 @@ _Last updated: 12 Oct 2026. Update this section in the same commit that finishes
 - Points go straight to whoever completes a task; no approval step (ADR-016).
 - Children don't sign in yet: v1 is Google sign-in for adults only. Child support is deferred, likely as a parent-managed login.
 - Hosting stays on a container, not serverless, because SignalR needs long-lived connections (ADR-018).
+- Who may sign in is controlled by Google, not our code: the OAuth consent screen stays in Testing mode, and only its listed test users can sign in (ADR-024). To add a family member, add their Google email there.
 
 ## Run it locally
 
@@ -39,6 +42,15 @@ docker compose up -d
 dotnet run --project src/Host
 ```
 
+Migrations run automatically on startup in Development.
+
+To sign in locally, give the host your Google OAuth client (stored outside the repo):
+
+```
+dotnet user-secrets --project src/Host set "Authentication:Google:ClientId" "<client id>"
+dotnet user-secrets --project src/Host set "Authentication:Google:ClientSecret" "<client secret>"
+```
+
 In a second terminal:
 
 ```
@@ -47,7 +59,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The status card should show the API as reachable and Postgres as Healthy.
+Open http://localhost:5173. Google must list `http://localhost:5173/signin-google` as a redirect URI.
 
 ## Test
 
@@ -59,14 +71,16 @@ Integration tests start their own throwaway Postgres in Docker.
 
 ## Deploy (Fly.io + Neon)
 
-Deployment is automatic: every green push to `main` deploys (ADR-020). One-off setup:
+Deployment is automatic: every green push to `main` deploys (ADR-020). Migrations run first, in Fly's release command (ADR-021). One-off setup:
 
 1. Create a Neon project (Postgres only, no Neon Auth). Copy the pooled connection string in .NET format.
 2. Create a Fly.io account and an organization access token.
-3. In GitHub, Settings → Secrets and variables → Actions, add:
+3. In Google Cloud, create an OAuth client (Web application) with redirect URI `https://mfk-family-board.fly.dev/signin-google`. Keep the consent screen in Testing mode and add each family member as a test user.
+4. In GitHub, Settings → Secrets and variables → Actions, add:
    - `FLY_API_TOKEN`: the Fly token
    - `NEON_CONNECTION_STRING`: the Neon string
-4. Push to `main`, or re-run the latest CI run. The deploy job creates the Fly app on first run.
-5. Visit https://mfk-family-board.fly.dev/api/health.
+   - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: the OAuth client
+5. Push to `main`, or re-run the latest CI run. The deploy job creates the Fly app on first run.
+6. Visit https://mfk-family-board.fly.dev/api/health.
 
-Without those secrets, the deploy job skips itself and CI stays green.
+Without the Fly and Neon secrets, the deploy job skips itself and CI stays green. Without the Google secrets, the app runs but sign-in answers 503.
