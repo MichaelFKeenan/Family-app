@@ -18,10 +18,6 @@ _Last updated: 12 Oct 2026. Update this section in the same commit that finishes
 
 - Phase 1, step 2: Identity. Google sign-in, users and login identities, cookie session, `GET /api/me` (ADR-007, ADR-008).
 
-**Open questions**
-
-- Do the children have Google accounts? If not, step 2 needs another way for them to sign in. Ask before building Identity.
-
 **Follow-ups**
 
 - [ ] Reset the Neon database password (it was shared in a chat), then update the `NEON_CONNECTION_STRING` GitHub secret.
@@ -31,6 +27,7 @@ _Last updated: 12 Oct 2026. Update this section in the same commit that finishes
 **Decisions not visible in the code**
 
 - Points go straight to whoever completes a task; no approval step (ADR-016).
+- Children don't sign in yet: v1 is Google sign-in for adults only. Child support is deferred, likely as a parent-managed login.
 - Hosting stays on a container, not serverless, because SignalR needs long-lived connections (ADR-018).
 
 ## Run it locally
