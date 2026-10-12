@@ -24,7 +24,17 @@ jobs:
 
       # Integration tests start a real Postgres via Testcontainers; the runner has Docker.
       - name: Test
-        run: dotnet test FamilyApp.slnx --no-build -c Release --logger "console;verbosity=normal"
+        run: dotnet test FamilyApp.slnx --no-build -c Release --logger "console;verbosity=normal" --logger trx --results-directory TestResults
+
+      # Surface the totals as an annotation, visible on the run page without opening logs.
+      - name: Report test totals
+        if: always()
+        run: |
+          for f in TestResults/*.trx; do
+            [ -f "$f" ] || continue
+            counters=$(grep -o '<Counters [^>]*>' "$f" | grep -oE '(total|executed|passed|failed)="[0-9]+"' | tr '\n' ' ')
+            echo "::notice title=$(basename "$f")::$counters"
+          done
 
   frontend:
     name: Frontend build

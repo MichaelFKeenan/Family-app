@@ -34,13 +34,13 @@ public sealed class FamilyAppFactory : WebApplicationFactory<Program>, IAsyncLif
         builder.ConfigureTestServices(services =>
         {
             services.AddAuthentication()
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Scheme, _ => { });
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
 
             // The cookie handler asks the test handler who the user is. Challenges (401s) still
             // come from the real cookie handler.
             services.PostConfigure<CookieAuthenticationOptions>(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                options => options.ForwardAuthenticate = TestAuthHandler.Scheme);
+                options => options.ForwardAuthenticate = TestAuthHandler.SchemeName);
         });
     }
 }

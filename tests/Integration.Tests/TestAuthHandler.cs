@@ -13,7 +13,7 @@ public sealed class TestAuthHandler(
     ILoggerFactory logger,
     UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    public const string Scheme = "Test";
+    public const string SchemeName = "Test";
     public const string UserHeader = "X-Test-User-Id";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -25,10 +25,10 @@ public sealed class TestAuthHandler(
 
         var identity = new ClaimsIdentity(
             [new Claim(UserClaims.UserId, userId.ToString())],
-            Scheme,
+            SchemeName,
             UserClaims.DisplayName,
             "role");
 
-        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme)));
+        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
     }
 }
