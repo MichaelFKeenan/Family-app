@@ -40,7 +40,8 @@ web/                 React app
 
 ## Rules
 
-- Modules never reference each other. They communicate through domain events (ADR-004). `ModuleBoundaryTests` enforces this.
+- Modules never reference each other. `ModuleBoundaryTests` enforces this. To read another module's data, depend on a read-only interface in SharedKernel that the owning module implements (`IHouseholdMembership`, `IUserDirectory`). To react to another module's changes, use domain events (ADR-004, ADR-025).
+- Household-scoped endpoints call `.RequireHousehold()`, then read `CurrentHousehold.Id`. It resolves the `X-Household-Id` header, or the user's only household, and checks membership on every request (ADR-026). Module DbContexts for household-owned data apply a global query filter on `CurrentHousehold` (ADR-009).
 - Each module implements `IModule` and is listed explicitly in `Program.cs`. Its endpoints live under `/api/{module.Name}`.
 - Every household-owned table has `household_id` and is filtered by it (ADR-009).
 - Primary keys are UUIDv7 (`Guid.CreateVersion7()`, ADR-013).
