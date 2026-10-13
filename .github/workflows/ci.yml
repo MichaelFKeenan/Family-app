@@ -35,6 +35,19 @@ jobs:
             counters=$(grep -o '<Counters [^>]*>' "$f" | grep -oE '(total|executed|passed|failed)="[0-9]+"' | tr '\n' ' ')
             echo "::notice title=$(basename "$f")::$counters"
           done
+          # One annotation per failed test, with the start of its message.
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          for path in glob.glob("TestResults/*.trx"):
+              for result in ET.parse(path).getroot().iterfind(".//t:UnitTestResult", ns):
+                  if result.get("outcome") != "Failed":
+                      continue
+                  message = result.find(".//t:ErrorInfo/t:Message", ns)
+                  text = (message.text or "").strip() if message is not None else ""
+                  text = text[:900].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+                  print(f"::error title={result.get('testName')}::{text}")
+          PY
 
   frontend:
     name: Frontend build
