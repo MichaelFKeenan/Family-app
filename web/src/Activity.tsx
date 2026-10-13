@@ -50,9 +50,21 @@ function describe(entry: ActivityEntry, members: Member[]): string {
       return `${actor} reopened ${title}`;
     case 'TaskDeleted':
       return `${actor} deleted ${title}`;
+    case 'ShoppingItemAdded':
+      return `${actor} put ${item(p)} on the shopping list`;
+    case 'ShoppingItemChecked':
+      return `${actor} ticked off ${item(p)}`;
+    case 'ShoppingItemUnchecked':
+      return `${actor} put ${item(p)} back on the list`;
+    case 'ShoppingItemRemoved':
+      return `${actor} took ${item(p)} off the list`;
     default:
       return `${actor}: ${entry.type}`;
   }
+}
+
+function item(p: Record<string, unknown>): string {
+  return p.quantity ? `${String(p.quantity)} × ${String(p.name)}` : String(p.name ?? '');
 }
 
 function ago(iso: string): string {

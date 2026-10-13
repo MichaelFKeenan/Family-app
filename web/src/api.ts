@@ -63,6 +63,17 @@ export type TaskInput = {
   dueOn?: string | null;
 };
 
+export type ShoppingItem = {
+  id: string;
+  name: string;
+  quantity: string | null;
+  note: string | null;
+  addedBy: string;
+  addedAt: string;
+  checkedBy: string | null;
+  checkedAt: string | null;
+};
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -121,6 +132,18 @@ export const api = {
   categories: () => request<Category[]>('/api/tasks/categories'),
   createCategory: (name: string) =>
     request<Category>('/api/tasks/categories', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  shopping: () => request<ShoppingItem[]>('/api/shopping'),
+  recentlyChecked: (limit: number) => request<ShoppingItem[]>(`/api/shopping/checked?limit=${limit}`),
+  // Adding something already on the list returns the existing item with alreadyOnList: true (ADR-035).
+  addShoppingItem: (input: { name: string; quantity?: string | null }) =>
+    request<{ item: ShoppingItem; alreadyOnList: boolean }>('/api/shopping', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  tickShoppingItem: (id: string, action: 'check' | 'uncheck') =>
+    request<ShoppingItem>(`/api/shopping/${id}/${action}`, { method: 'POST' }),
+  removeShoppingItem: (id: string) => request<void>(`/api/shopping/${id}`, { method: 'DELETE' }),
 
   activity: (limit: number) => request<ActivityEntry[]>(`/api/activity?limit=${limit}`),
 

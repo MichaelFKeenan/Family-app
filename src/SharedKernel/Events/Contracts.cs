@@ -32,3 +32,14 @@ public sealed record PointsAwarded(Guid HouseholdId, Guid ActorId, Guid Recipien
 
 /// <summary>Points taken back because a completed task was reopened or deleted. <see cref="Amount"/> is positive.</summary>
 public sealed record PointsReversed(Guid HouseholdId, Guid ActorId, Guid RecipientId, Guid TaskId, string Title, int Amount) : IDomainEvent;
+
+public sealed record ShoppingItemAdded(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name, string? Quantity) : IDomainEvent;
+
+/// <summary>Ticked off: bought, or no longer needed. The row is kept as purchase history (ADR-010).</summary>
+public sealed record ShoppingItemChecked(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name) : IDomainEvent;
+
+/// <summary>A tick undone: the item is back on the active list.</summary>
+public sealed record ShoppingItemUnchecked(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name) : IDomainEvent;
+
+/// <summary>Taken off the list without being bought, usually a mistake. Only active items can be removed (ADR-035).</summary>
+public sealed record ShoppingItemRemoved(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name) : IDomainEvent;

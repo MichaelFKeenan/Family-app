@@ -467,3 +467,107 @@ body {
   color: var(--bad);
   font-weight: 600;
 }
+
+/* Navigation between the board and the shopping list. */
+.nav {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.nav .tab {
+  font-size: 0.95rem;
+  padding: 0.35rem 0.9rem;
+  text-decoration: none;
+}
+
+/* Shopping list: big tap targets, made for one hand in a shop. */
+.shopping {
+  max-width: 40rem;
+}
+
+.shopping .card + .card,
+.shopping .notice + .card {
+  margin-top: 1rem;
+}
+
+.notice {
+  margin: 0.5rem 0 0;
+}
+
+.add-item .row {
+  flex-wrap: nowrap;
+  margin-top: 0;
+}
+
+.input.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.input.qty-input {
+  width: 4.5rem;
+  flex: none;
+}
+
+.count {
+  font-weight: 400;
+}
+
+.items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.items li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.items li:last-child {
+  border-bottom: none;
+}
+
+.tick {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.tick:hover,
+.tick:focus-visible {
+  border-color: var(--accent);
+}
+
+.item-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item-name {
+  overflow-wrap: anywhere;
+}
+
+.item-note {
+  font-size: 0.85rem;
+}
+
+.qty {
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+.items.done .item-name {
+  text-decoration: line-through;
+  color: var(--muted);
+}

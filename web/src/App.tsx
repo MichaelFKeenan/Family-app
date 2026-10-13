@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, signInHref } from './api';
 import { Activity } from './Activity';
 import { Board } from './Board';
 import { HouseholdPanel } from './HouseholdPanel';
 import { Leaderboard } from './Leaderboard';
+import { Shopping } from './Shopping';
 
 export function App() {
   const queryClient = useQueryClient();
@@ -17,6 +19,7 @@ export function App() {
   });
 
   const hasHousehold = (households.data?.length ?? 0) > 0;
+  const view = useView();
 
   return (
     <main className={`page${hasHousehold ? ' wide' : ''}`}>
@@ -44,14 +47,26 @@ export function App() {
         </section>
       )}
 
-      {me.data && hasHousehold && <Board />}
       {me.data && hasHousehold && (
+        <nav className="nav">
+          <a className={`tab${view === 'board' ? ' active' : ''}`} href="#board">
+            Board
+          </a>
+          <a className={`tab${view === 'shopping' ? ' active' : ''}`} href="#shopping">
+            Shopping
+          </a>
+        </nav>
+      )}
+
+      {me.data && hasHousehold && view === 'shopping' && <Shopping />}
+      {me.data && hasHousehold && view === 'board' && <Board />}
+      {me.data && hasHousehold && view === 'board' && (
         <div className="side-by-side">
           <Leaderboard />
           <Activity />
         </div>
       )}
-      {me.data && <HouseholdPanel />}
+      {me.data && (view === 'board' || !hasHousehold) && <HouseholdPanel />}
 
       <p className="footer muted">
         {health.data
@@ -62,4 +77,19 @@ export function App() {
       </p>
     </main>
   );
+}
+
+type View = 'board' | 'shopping';
+
+// Two pages don't justify a router library. The view lives in the URL hash, so /#shopping can be
+// bookmarked or saved to a phone's home screen, and the back button works.
+function useView(): View {
+  const read = (): View => (window.location.hash === '#shopping' ? 'shopping' : 'board');
+  const [view, setView] = useState<View>(read);
+  useEffect(() => {
+    const onChange = () => setView(read());
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  return view;
 }
