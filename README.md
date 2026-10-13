@@ -22,11 +22,11 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 **Open questions**
 
-- Domain: buy one (recommended, also good DNS practice) or start free with `<server-ip-with-dashes>.sslip.io`?
+- None.
 
 **Next**
 
-- Owner: create the Hetzner server with `infra/cloud-init.yaml`, point the domain at it, add secrets `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DOMAIN`, and Google redirect URI `https://<domain>/signin-google`. Then re-run CI to deploy.
+- Owner: server created (`65.109.172.182`). Domain for now is the free `65-109-172-182.sslip.io` (no DNS setup needed; buy a real domain later). Add secrets `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DOMAIN`, and Google redirect URI `https://65-109-172-182.sslip.io/signin-google`. Then re-run CI to deploy.
 - Confirm on the live site: sign-in, household, invite, board, activity feed, leaderboard.
 - Phase 1, step 7: Shopping list. Permanent list, add and tick off items, ticked items kept for history (ADR-010).
 
@@ -36,6 +36,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - [ ] Delete the Fly app and the `FLY_API_TOKEN` GitHub secret (no longer used).
 - [ ] Pin the server's SSH host key as a secret instead of trusting it on each deploy (ADR-034).
 - [ ] Rate limiting, if availability ever matters (the owner prioritises cost, and an attack can't raise the bill). `/api/health` is public and queries Postgres on every call, so a flood could use up Neon's free compute hours and pause the database until next month. Options: cache or rate-limit `/api/health`, ASP.NET Core's rate limiter per IP for anonymous requests, Cloudflare's free plan in front.
+- [ ] Buy a real domain and move off sslip.io (then update the `DOMAIN` secret and the Google redirect URI).
 - [ ] Commit `web/package-lock.json` after the first local `npm install`, so builds are reproducible.
 
 **Decisions not visible in the code**
