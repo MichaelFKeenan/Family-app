@@ -3,16 +3,18 @@ import { api, type ActivityEntry, type Member } from './api';
 
 // Each entry is a domain event from the activity log (ADR-005), rendered as a sentence.
 export function Activity() {
-  const activity = useQuery({ queryKey: ['activity'], queryFn: () => api.activity(15), refetchInterval: 30_000 });
+  const activity = useQuery({ queryKey: ['activity'], queryFn: () => api.activity(30), refetchInterval: 30_000 });
   const members = useQuery({ queryKey: ['members'], queryFn: api.members });
 
-  if (!activity.data || activity.data.length === 0) return null;
+  // Points changes are already visible in the completion line ("… (5 pts)") and on the leaderboard.
+  const entries = (activity.data ?? []).filter((entry) => !entry.type.startsWith('Points')).slice(0, 15);
+  if (entries.length === 0) return null;
 
   return (
     <section className="card">
       <h2>Recent activity</h2>
       <ul className="activity">
-        {activity.data.map((entry) => (
+        {entries.map((entry) => (
           <li key={entry.id}>
             <span>{describe(entry, members.data ?? [])}</span>
             <span className="muted when">{ago(entry.occurredAt)}</span>

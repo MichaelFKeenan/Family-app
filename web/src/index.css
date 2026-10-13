@@ -362,6 +362,102 @@ body {
   white-space: nowrap;
 }
 
+.side-by-side {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.side-by-side .card {
+  margin: 0;
+}
+
+@media (min-width: 48rem) {
+  .side-by-side {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.side-by-side + .card {
+  margin-top: 1rem;
+}
+
+.leaderboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.leaderboard-head h2 {
+  margin: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tab {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.leaderboard {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.leaderboard li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.leaderboard li:last-child {
+  border-bottom: none;
+}
+
+.leaderboard .rank {
+  width: 1.25rem;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.leaderboard .who {
+  flex: 1;
+}
+
+.leaderboard .score {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.leaderboard li.leader .rank,
+.leaderboard li.leader .score {
+  color: var(--accent);
+}
+
 .good {
   color: var(--good);
   font-weight: 600;

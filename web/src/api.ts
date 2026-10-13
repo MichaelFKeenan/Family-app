@@ -124,6 +124,12 @@ export const api = {
 
   activity: (limit: number) => request<ActivityEntry[]>(`/api/activity?limit=${limit}`),
 
+  // `from` is encoded: an ISO date can contain '+', which a query string would read as a space.
+  leaderboard: (from: Date | null) =>
+    request<{ userId: string; points: number }[]>(
+      `/api/points/leaderboard${from ? `?from=${encodeURIComponent(from.toISOString())}` : ''}`,
+    ),
+
   health: async (): Promise<Health> => (await fetch('/api/health')).json(),
 };
 

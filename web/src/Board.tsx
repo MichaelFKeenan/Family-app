@@ -188,6 +188,7 @@ function TaskCard({ task, lookups }: { task: Task; lookups: Lookups }) {
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
     queryClient.invalidateQueries({ queryKey: ['activity'] });
+    queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
   };
 
   // On a 409 someone else got there first; reload so the card shows the truth.
@@ -275,6 +276,7 @@ function EditTask({ task, lookups, onDone }: { task: Task; lookups: Lookups; onD
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
       onDone();
     },
     onError: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),

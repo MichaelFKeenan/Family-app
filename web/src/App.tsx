@@ -3,6 +3,7 @@ import { api, signInHref } from './api';
 import { Activity } from './Activity';
 import { Board } from './Board';
 import { HouseholdPanel } from './HouseholdPanel';
+import { Leaderboard } from './Leaderboard';
 
 export function App() {
   const queryClient = useQueryClient();
@@ -44,7 +45,12 @@ export function App() {
       )}
 
       {me.data && hasHousehold && <Board />}
-      {me.data && hasHousehold && <Activity />}
+      {me.data && hasHousehold && (
+        <div className="side-by-side">
+          <Leaderboard />
+          <Activity />
+        </div>
+      )}
       {me.data && <HouseholdPanel />}
 
       <p className="footer muted">

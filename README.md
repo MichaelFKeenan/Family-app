@@ -17,11 +17,16 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - Phase 1, step 3: Households. Create a household, single-use hashed invite links, members list, `.RequireHousehold()` resolving the current household per request, isolation tests.
 - Phase 1, step 4: Tasks. Board (to do, doing, done) with priority, points, category, assignee and due date; start, complete, reopen, edit, delete; categories with defaults. Household isolation by EF global query filter plus a composite foreign key; optimistic concurrency on a `version` column (ADR-028).
 - Phase 1, step 5: domain events. Every write request is one transaction shared by all modules; events raised during it are logged to `platform.activity_events` and dispatched to handlers before commit. Default categories come from a `HouseholdCreated` handler. Recent-activity feed (ADR-030, ADR-031).
+- Phase 1, step 6: Points. Append-only `points.ledger` fed only by task events: completion pays the assignee (or completer), reopen and delete reverse whatever each person holds for that task. Leaderboard for this week, this month and all time; history endpoint; one-off backfill from the activity log (ADR-032, ADR-033). **Built and tested, not yet deployed** (see open questions).
+
+**Open questions**
+
+- Fly's free trial has ended and deploys fail until a card is added at https://fly.io/trial. The live site may also be stopped. Once added, re-run the latest CI run to deploy step 6.
 
 **Next**
 
-- Confirm on the live site: sign-in, household, invite, the board and the activity feed.
-- Phase 1, step 6: Points. Append-only ledger; `TaskCompleted` awards points to the assignee (or completer), `TaskReopened`/`TaskDeleted` reverse them; leaderboard by week, month and all time (ADR-006, ADR-016).
+- Deploy step 6, then confirm on the live site: sign-in, household, invite, board, activity feed, leaderboard.
+- Phase 1, step 7: Shopping list. Permanent list, add and tick off items, ticked items kept for history (ADR-010).
 
 **Follow-ups**
 

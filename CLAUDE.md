@@ -47,6 +47,8 @@ web/                 React app
 - Household-owned entities implement `IHouseholdOwned`; the module DbContext stamps `HouseholdId` on insert and refuses changes to other households' rows. Tables reference related household data by composite key `(household_id, id)`, so the database rejects cross-household links too (ADR-028). See `TasksDbContext` as the pattern.
 - State changes on an aggregate are separate command endpoints (`/start`, `/complete`), not a generic status PATCH. Edits send the `version` the client saw; a stale one gets 409 (ADR-014).
 - JSON enums are lower-case strings (`"todo"`). Query-string enums must be parsed case-insensitively by hand; minimal APIs bind them case-sensitively.
+- The points ledger is append-only: corrections are new entries, never edits or deletes. Points are only ever written by event handlers, never by an endpoint (ADR-032).
+- Date ranges from the browser (`from`, `to`) are ISO timestamps computed in the viewer's time zone and must be URL-encoded (`+` in an offset otherwise becomes a space).
 - Each module implements `IModule` and is listed explicitly in `Program.cs`. Its endpoints live under `/api/{module.Name}`.
 - Every household-owned table has `household_id` and is filtered by it (ADR-009).
 - Primary keys are UUIDv7 (`Guid.CreateVersion7()`, ADR-013).
