@@ -17,12 +17,13 @@ public sealed record TaskDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? CompletedAt,
     Guid? CompletedBy,
-    int Version)
+    int Version,
+    Guid? OwnerId)
 {
     internal static TaskDto From(TaskItem task) => new(
         task.Id, task.Title, task.Description, task.Status, task.Priority, task.Points,
         task.CategoryId, task.AssigneeId, task.DueOn, task.CreatedBy, task.CreatedAt,
-        task.UpdatedAt, task.CompletedAt, task.CompletedBy, task.Version);
+        task.UpdatedAt, task.CompletedAt, task.CompletedBy, task.Version, task.OwnerId);
 }
 
 public sealed record CategoryDto(Guid Id, string Name, int SortOrder)
@@ -37,7 +38,15 @@ public sealed record CreateTaskRequest(
     int? Points,
     Guid? CategoryId,
     Guid? AssigneeId,
-    DateOnly? DueOn);
+    DateOnly? DueOn,
+    bool? Personal = null);
+
+/// <summary>Which board a task list is for (ADR-037).</summary>
+public enum TaskBoard
+{
+    Family,
+    Personal,
+}
 
 /// <summary>A full edit. <see cref="Version"/> is the version the client last saw (ADR-014).</summary>
 public sealed record UpdateTaskRequest(

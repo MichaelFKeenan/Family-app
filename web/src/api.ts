@@ -41,7 +41,10 @@ export type Task = {
   completedAt: string | null;
   completedBy: string | null;
   version: number;
+  ownerId: string | null; // set: on that person's personal board (ADR-037)
 };
+
+export type BoardKind = 'family' | 'personal';
 
 export type Category = { id: string; name: string; sortOrder: number };
 
@@ -61,6 +64,7 @@ export type TaskInput = {
   categoryId?: string | null;
   assigneeId?: string | null;
   dueOn?: string | null;
+  personal?: boolean;
 };
 
 export type ShoppingItem = {
@@ -119,14 +123,14 @@ export const api = {
       { method: 'POST' },
     ),
 
-  tasks: () => request<Task[]>('/api/tasks'),
+  tasks: (board: BoardKind) => request<Task[]>(`/api/tasks?board=${board}`),
   createTask: (input: TaskInput) => request<Task>('/api/tasks', { method: 'POST', body: JSON.stringify(input) }),
   // A full edit; version is the one the form was opened with, so a stale save gets a 409 (ADR-014).
   updateTask: (id: string, input: Omit<TaskInput, 'assigneeId'> & { version: number }) =>
     request<Task>(`/api/tasks/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   assignTask: (id: string, assigneeId: string | null) =>
     request<Task>(`/api/tasks/${id}/assign`, { method: 'POST', body: JSON.stringify({ assigneeId }) }),
-  moveTask: (id: string, action: 'start' | 'complete' | 'reopen') =>
+  moveTask: (id: string, action: 'start' | 'complete' | 'reopen' | 'move-to-personal' | 'move-to-family') =>
     request<Task>(`/api/tasks/${id}/${action}`, { method: 'POST' }),
   deleteTask: (id: string) => request<void>(`/api/tasks/${id}`, { method: 'DELETE' }),
   categories: () => request<Category[]>('/api/tasks/categories'),

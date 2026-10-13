@@ -24,12 +24,12 @@ ALEX, SAM, HOUSEHOLD = "0199e000-0000-7000-8000-000000000001", "0199e000-0000-70
 categories = [{"id": f"c{i}", "name": n, "sortOrder": i} for i, n in enumerate(["Short term", "Long term", "House"])]
 
 
-def task(i, title, status, priority="medium", points=0, category="c0", assignee=None, due=None, description=None):
+def task(i, title, status, priority="medium", points=0, category="c0", assignee=None, due=None, description=None, owner=None):
     done = status == "done"
     return {"id": f"0199e000-0000-7000-8000-0000000001{i:02}", "title": title, "description": description, "status": status,
             "priority": priority, "points": points, "categoryId": category, "assigneeId": assignee, "dueOn": due,
             "createdBy": ALEX, "createdAt": iso(1000 + i), "updatedAt": iso(i), "completedAt": iso(5) if done else None,
-            "completedBy": SAM if done else None, "version": 1}
+            "completedBy": SAM if done else None, "version": 1, "ownerId": owner}
 
 
 tomorrow = (now + datetime.timedelta(days=1)).date().isoformat()
@@ -39,6 +39,11 @@ tasks = [
     task(3, "Clear out the loft", "doing", "low", 50, "c1", ALEX),
     task(4, "Hoover the stairs", "done", "medium", 5, "c2", SAM),
     task(5, "Fix the dripping tap in the upstairs bathroom before it gets worse", "todo", "medium", 15, "c2", ALEX),
+]
+personal_tasks = [
+    task(11, "Renew my passport", "todo", "high", 0, "c1", None, tomorrow, owner=ALEX),
+    task(12, "Birthday present for Sam", "doing", "medium", 0, "c0", ALEX, owner=ALEX),
+    task(13, "Book the dentist", "done", "low", 0, "c0", None, owner=ALEX),
 ]
 items = [
     {"id": f"0199e000-0000-7000-8000-0000000002{i:02}", "name": n, "quantity": q, "note": note, "addedBy": ALEX,
@@ -62,6 +67,7 @@ health = {"status": "Healthy", "checks": {"postgres": "Healthy"}}
 SCENARIOS = {
     # name: (hash, responses by path; a number means "fail with that status")
     "board": ("#board", {}),
+    "mine": ("#mine", {}),
     "shopping": ("#shopping", {}),
     "signed-out": ("", {"/api/identity/me": 401}),
     "no-household": ("", {"/api/households": []}),
@@ -81,6 +87,8 @@ DEFAULTS = {
 def handler(overrides):
     def handle(route):
         path = "/" + route.request.url.split("/", 3)[3].split("?")[0]
+        if path == "/api/tasks" and "board=personal" in route.request.url:
+            return route.fulfill(status=200, content_type="application/json", body=json.dumps(personal_tasks))
         if route.request.method != "GET":
             return route.fulfill(status=500, content_type="application/problem+json",
                                  body=json.dumps({"title": "Error", "detail": "Simulated failure"}))

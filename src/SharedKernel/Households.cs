@@ -29,6 +29,19 @@ public sealed class CurrentHousehold
     internal void Set(Guid id) => _id = id;
 }
 
+/// <summary>
+/// The signed-in user of the current request, set by <see cref="HouseholdEndpoints.RequireHousehold{TBuilder}"/>
+/// with the household. Module DbContexts read it for per-user rules, such as personal tasks being
+/// visible only to their owner (ADR-037). Unresolved reads as <see cref="Guid.Empty"/>, which matches
+/// no one, so a query outside a household request sees no personal data: it fails closed.
+/// </summary>
+public sealed class CurrentUser
+{
+    public Guid Id { get; private set; }
+
+    internal void Set(Guid id) => Id = id;
+}
+
 public static class HouseholdEndpoints
 {
     /// <summary>Optional request header naming the household to act on (ADR-026).</summary>
@@ -83,6 +96,7 @@ public static class HouseholdEndpoints
             }
 
             http.RequestServices.GetRequiredService<CurrentHousehold>().Set(householdId);
+            http.RequestServices.GetRequiredService<CurrentUser>().Set(userId);
             return await next(context);
         });
         return builder;

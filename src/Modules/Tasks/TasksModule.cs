@@ -33,8 +33,18 @@ public sealed class TasksModule : IModule
 
         // status is bound as a string: minimal APIs parse query-string enums case-sensitively,
         // and the API's enums are lower-case ("todo"), so we parse it ourselves.
-        tasks.MapGet("", async (string? status, Guid? categoryId, Guid? assigneeId, TaskService service, CancellationToken ct) =>
+        tasks.MapGet("", async (string? board, string? status, Guid? categoryId, Guid? assigneeId, TaskService service, CancellationToken ct) =>
         {
+            // ?board=personal is the caller's own board; anything else, or nothing, is the family board (ADR-037).
+            var which = TaskBoard.Family;
+            if (board is not null && (!Enum.TryParse(board, ignoreCase: true, out which) || !Enum.IsDefined(which)))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["board"] = ["Board must be family or personal."],
+                });
+            }
+
             TaskState? state = null;
             if (status is not null)
             {
@@ -48,7 +58,7 @@ public sealed class TasksModule : IModule
                 state = parsed;
             }
 
-            return Results.Ok(await service.ListAsync(state, categoryId, assigneeId, ct));
+            return Results.Ok(await service.ListAsync(which, state, categoryId, assigneeId, ct));
         });
 
         tasks.MapGet("/{id:guid}", async (Guid id, TaskService service, CancellationToken ct) =>
@@ -91,6 +101,18 @@ public sealed class TasksModule : IModule
         {
             user.TryGetUserId(out var userId);
             return ToHttp(await service.ReopenAsync(id, userId, ct));
+        });
+
+        tasks.MapPost("/{id:guid}/move-to-personal", async (Guid id, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return ToHttp(await service.MoveToPersonalAsync(id, userId, ct));
+        });
+
+        tasks.MapPost("/{id:guid}/move-to-family", async (Guid id, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return ToHttp(await service.MoveToFamilyAsync(id, userId, ct));
         });
 
         tasks.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>

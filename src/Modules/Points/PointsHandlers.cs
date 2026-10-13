@@ -13,7 +13,8 @@ internal sealed class AwardPointsOnCompletion(PointsDbContext db, DomainEvents e
 {
     public override async Task HandleAsync(TaskCompleted completed, CancellationToken cancellationToken)
     {
-        if (completed.Points <= 0) return;
+        // Personal tasks never earn points (ADR-037); they pay only once moved to the family board.
+        if (completed.Points <= 0 || completed.OwnerId is not null) return;
 
         // The assignee earns the points; an unassigned task pays whoever completed it.
         var recipient = completed.AssigneeId ?? completed.ActorId;

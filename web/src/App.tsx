@@ -53,7 +53,10 @@ export function App() {
       {me.data && hasHousehold && (
         <nav className="nav">
           <a className={`tab${view === 'board' ? ' active' : ''}`} href="#board">
-            Board
+            Family
+          </a>
+          <a className={`tab${view === 'mine' ? ' active' : ''}`} href="#mine">
+            Mine
           </a>
           <a className={`tab${view === 'shopping' ? ' active' : ''}`} href="#shopping">
             Shopping
@@ -62,7 +65,8 @@ export function App() {
       )}
 
       {me.data && hasHousehold && view === 'shopping' && <Shopping />}
-      {me.data && hasHousehold && view === 'board' && <Board />}
+      {me.data && hasHousehold && view === 'board' && <Board board="family" />}
+      {me.data && hasHousehold && view === 'mine' && <Board board="personal" />}
       {me.data && hasHousehold && view === 'board' && (
         <div className="side-by-side">
           <Leaderboard />
@@ -82,12 +86,13 @@ export function App() {
   );
 }
 
-type View = 'board' | 'shopping';
+type View = 'board' | 'mine' | 'shopping';
 
 // Two pages don't justify a router library. The view lives in the URL hash, so /#shopping can be
 // bookmarked or saved to a phone's home screen, and the back button works.
 function useView(): View {
-  const read = (): View => (window.location.hash === '#shopping' ? 'shopping' : 'board');
+  const read = (): View =>
+    window.location.hash === '#shopping' ? 'shopping' : window.location.hash === '#mine' ? 'mine' : 'board';
   const [view, setView] = useState<View>(read);
   useEffect(() => {
     const onChange = () => setView(read());

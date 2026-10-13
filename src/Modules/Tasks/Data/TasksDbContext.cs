@@ -10,7 +10,8 @@ namespace FamilyApp.Modules.Tasks.Data;
 /// so household isolation doesn't depend on each query remembering a WHERE clause.
 /// If no household was resolved for the request, any query throws: it fails closed.
 /// </summary>
-public sealed class TasksDbContext(DbContextOptions<TasksDbContext> options, DbSession session, CurrentHousehold currentHousehold)
+public sealed class TasksDbContext(
+    DbContextOptions<TasksDbContext> options, DbSession session, CurrentHousehold currentHousehold, CurrentUser currentUser)
     : ModuleDbContext(options, session)
 {
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
@@ -19,6 +20,10 @@ public sealed class TasksDbContext(DbContextOptions<TasksDbContext> options, DbS
     // Read by the query filters. EF Core evaluates context members per query, not once per model,
     // so each request filters by its own household.
     private Guid HouseholdId => currentHousehold.Id;
+
+    // Personal tasks are visible only to their owner (ADR-037). Part of the global filter, like the
+    // household, so no query can forget it: another member's personal task is simply not found.
+    private Guid UserId => currentUser.Id;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,7 +45,7 @@ public sealed class TasksDbContext(DbContextOptions<TasksDbContext> options, DbS
         {
             task.ToTable("tasks");
             task.HasKey(t => t.Id);
-            task.HasQueryFilter(t => t.HouseholdId == HouseholdId);
+            task.HasQueryFilter(t => t.HouseholdId == HouseholdId && (t.OwnerId == null || t.OwnerId == UserId));
             task.Property(t => t.Id).HasColumnName("id").ValueGeneratedNever();
             task.Property(t => t.HouseholdId).HasColumnName("household_id");
             task.Property(t => t.Title).HasColumnName("title");
@@ -60,6 +65,7 @@ public sealed class TasksDbContext(DbContextOptions<TasksDbContext> options, DbS
             task.Property(t => t.UpdatedAt).HasColumnName("updated_at");
             task.Property(t => t.CompletedAt).HasColumnName("completed_at");
             task.Property(t => t.CompletedBy).HasColumnName("completed_by");
+            task.Property(t => t.OwnerId).HasColumnName("owner_id");
 
             // EF adds "AND version = <value we loaded>" to every UPDATE and DELETE, and throws
             // DbUpdateConcurrencyException when no row matches (ADR-014).
@@ -123,6 +129,10 @@ public sealed class TaskItem : IHouseholdOwned
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
     public Guid? CompletedBy { get; set; }
+
+    /// <summary>Null for a family task; the owner's id for a personal task (ADR-037).</summary>
+    public Guid? OwnerId { get; set; }
+
     public int Version { get; set; }
 }
 

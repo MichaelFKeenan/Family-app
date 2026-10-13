@@ -630,3 +630,7 @@ body {
 .load-error .link {
   margin-top: 0;
 }
+
+.board-note {
+  margin: 0 0 0.75rem;
+}

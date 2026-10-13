@@ -52,6 +52,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 // Set per request by .RequireHousehold(); read by modules to scope their queries (ADR-009, ADR-026).
 builder.Services.AddScoped<CurrentHousehold>();
+builder.Services.AddScoped<CurrentUser>();
 
 // One connection per request, shared by every module's DbContext; write requests run in one
 // transaction on it (ADR-030). Events raised during the request are dispatched before commit (ADR-031).

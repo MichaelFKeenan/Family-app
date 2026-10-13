@@ -58,6 +58,10 @@ function describe(entry: ActivityEntry, members: Member[]): string {
       return `${actor} reopened ${title}`;
     case 'TaskDeleted':
       return `${actor} deleted ${title}`;
+    case 'TaskMadePersonal':
+      return `${actor} moved ${title} to their own board`;
+    case 'TaskSharedWithFamily':
+      return `${actor} moved ${title} to the family board`;
     case 'ShoppingItemAdded':
       return `${actor} put ${item(p)} on the shopping list`;
     case 'ShoppingItemChecked':

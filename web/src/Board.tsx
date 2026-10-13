@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoadError } from './Problem';
-import { api, ApiError, type Category, type Member, type Priority, type Task, type TaskStatus } from './api';
+import { api, ApiError, type BoardKind, type Category, type Member, type Priority, type Task, type TaskStatus } from './api';
 
 const COLUMNS: { status: TaskStatus; title: string }[] = [
   { status: 'todo', title: 'To do' },
@@ -12,17 +12,20 @@ const COLUMNS: { status: TaskStatus; title: string }[] = [
 const PRIORITIES: Priority[] = ['low', 'medium', 'high', 'urgent'];
 const PRIORITY_RANK: Record<Priority, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
 
-type Lookups = { categories: Category[]; members: Member[] };
+// personal: this is the signed-in user's own board (ADR-037); meId decides who may move a task there.
+type Lookups = { categories: Category[]; members: Member[]; personal: boolean; meId: string | undefined };
 
-export function Board() {
-  const tasks = useQuery({ queryKey: ['tasks'], queryFn: api.tasks });
+export function Board({ board }: { board: BoardKind }) {
+  const tasks = useQuery({ queryKey: ['tasks', board], queryFn: () => api.tasks(board) });
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me });
   const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories });
   const members = useQuery({ queryKey: ['members'], queryFn: api.members });
 
   const [categoryFilter, setCategoryFilter] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('');
 
-  const lookups: Lookups = { categories: categories.data ?? [], members: members.data ?? [] };
+  const personal = board === 'personal';
+  const lookups: Lookups = { categories: categories.data ?? [], members: members.data ?? [], personal, meId: me.data?.id };
 
   // Filtering is done here rather than via the API's query parameters: the whole board is
   // already loaded, so changing a filter is instant and costs no request.
@@ -47,6 +50,11 @@ export function Board() {
 
   return (
     <section className="board">
+      {personal && (
+        <p className="muted board-note">
+          Only you can see this board. Tasks here don't earn points; move one to the family board to share it.
+        </p>
+      )}
       <QuickAdd lookups={lookups} />
 
       <div className="filters">
@@ -58,6 +66,7 @@ export function Board() {
             </option>
           ))}
         </select>
+        {!personal && (
         <select className="input" value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} aria-label="Filter by person">
           <option value="">Everyone</option>
           <option value="none">Unassigned</option>
@@ -67,6 +76,7 @@ export function Board() {
             </option>
           ))}
         </select>
+        )}
       </div>
 
       <div className="columns">
@@ -121,10 +131,11 @@ function QuickAdd({ lookups }: { lookups: Lookups }) {
     create.mutate({
       title: title.trim(),
       priority,
-      points,
+      points: lookups.personal ? 0 : points,
       categoryId: categoryId || null,
-      assigneeId: assigneeId || null,
+      assigneeId: lookups.personal ? null : assigneeId || null,
       dueOn: dueOn || null,
+      personal: lookups.personal,
     });
   };
 
@@ -158,6 +169,7 @@ function QuickAdd({ lookups }: { lookups: Lookups }) {
               ))}
             </select>
           </label>
+          {!lookups.personal && (
           <label>
             Points
             <input
@@ -169,14 +181,17 @@ function QuickAdd({ lookups }: { lookups: Lookups }) {
               onChange={(e) => setPoints(Number(e.target.value))}
             />
           </label>
+          )}
           <label>
             Category
             <CategorySelect value={categoryId} onChange={setCategoryId} categories={lookups.categories} />
           </label>
+          {!lookups.personal && (
           <label>
             Assignee
             <MemberSelect value={assigneeId} onChange={setAssigneeId} members={lookups.members} />
           </label>
+          )}
           <label>
             Due
             <input className="input" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
@@ -199,7 +214,7 @@ function TaskCard({ task, lookups }: { task: Task; lookups: Lookups }) {
 
   // On a 409 someone else got there first; reload so the card shows the truth.
   const move = useMutation({
-    mutationFn: (action: 'start' | 'complete' | 'reopen') => api.moveTask(task.id, action),
+    mutationFn: (action: 'start' | 'complete' | 'reopen' | 'move-to-personal' | 'move-to-family') => api.moveTask(task.id, action),
     onSettled: refresh,
   });
   const remove = useMutation({ mutationFn: () => api.deleteTask(task.id), onSettled: refresh });
@@ -216,10 +231,10 @@ function TaskCard({ task, lookups }: { task: Task; lookups: Lookups }) {
       {task.description && <p className="muted task-description">{task.description}</p>}
       <div className="chips">
         {(task.priority === 'high' || task.priority === 'urgent') && <span className="chip strong">{task.priority}</span>}
-        {task.points > 0 && <span className="chip">{task.points} pts</span>}
+        {task.points > 0 && !lookups.personal && <span className="chip">{task.points} pts</span>}
         {category && <span className="chip">{category.name}</span>}
         {task.dueOn && <span className="chip">due {formatDate(task.dueOn)}</span>}
-        <span className="chip">{assignee ? assignee.displayName : 'unassigned'}</span>
+        {!lookups.personal && <span className="chip">{assignee ? assignee.displayName : 'unassigned'}</span>}
       </div>
       <div className="task-actions">
         {task.status === 'todo' && (
@@ -240,6 +255,17 @@ function TaskCard({ task, lookups }: { task: Task; lookups: Lookups }) {
         <button className="link" onClick={() => setEditing(true)}>
           Edit
         </button>
+        {/* Only open tasks move, and only your own or unassigned ones: the API enforces the same (ADR-037). */}
+        {task.status !== 'done' && lookups.personal && (
+          <button className="link" onClick={() => move.mutate('move-to-family')} disabled={move.isPending}>
+            To family board
+          </button>
+        )}
+        {task.status !== 'done' && !lookups.personal && (!task.assigneeId || task.assigneeId === lookups.meId) && (
+          <button className="link" onClick={() => move.mutate('move-to-personal')} disabled={move.isPending}>
+            To my board
+          </button>
+        )}
         <button
           className="link danger"
           onClick={() => window.confirm(`Delete "${task.title}"?`) && remove.mutate()}
@@ -317,18 +343,22 @@ function EditTask({ task, lookups, onDone }: { task: Task; lookups: Lookups; onD
             ))}
           </select>
         </label>
-        <label>
-          Points
-          <input className="input" type="number" min={0} max={1000} value={points} onChange={(e) => setPoints(Number(e.target.value))} />
-        </label>
+        {!lookups.personal && (
+          <label>
+            Points
+            <input className="input" type="number" min={0} max={1000} value={points} onChange={(e) => setPoints(Number(e.target.value))} />
+          </label>
+        )}
         <label>
           Category
           <CategorySelect value={categoryId} onChange={setCategoryId} categories={lookups.categories} />
         </label>
-        <label>
-          Assignee
-          <MemberSelect value={assigneeId} onChange={setAssigneeId} members={lookups.members} />
-        </label>
+        {!lookups.personal && (
+          <label>
+            Assignee
+            <MemberSelect value={assigneeId} onChange={setAssigneeId} members={lookups.members} />
+          </label>
+        )}
         <label>
           Due
           <input className="input" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
