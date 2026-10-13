@@ -8,7 +8,7 @@ Design doc and decision log: https://claude.ai/code/artifact/d76d14ee-5270-4a19-
 
 _Last updated: 13 Oct 2026. Update this section in the same commit that finishes a step._
 
-**Live:** not yet. Moving from Fly.io to a fixed-price Hetzner server (ADR-034); the site goes live once the server, domain and secrets below exist. Every green push to `main` then deploys automatically.
+**Live:** https://65-109-172-182.sslip.io on a fixed-price Hetzner server (ADR-034), first deployed 13 Oct 2026. Every green push to `main` deploys automatically.
 
 **Done**
 
@@ -17,7 +17,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - Phase 1, step 3: Households. Create a household, single-use hashed invite links, members list, `.RequireHousehold()` resolving the current household per request, isolation tests.
 - Phase 1, step 4: Tasks. Board (to do, doing, done) with priority, points, category, assignee and due date; start, complete, reopen, edit, delete; categories with defaults. Household isolation by EF global query filter plus a composite foreign key; optimistic concurrency on a `version` column (ADR-028).
 - Phase 1, step 5: domain events. Every write request is one transaction shared by all modules; events raised during it are logged to `platform.activity_events` and dispatched to handlers before commit. Default categories come from a `HouseholdCreated` handler. Recent-activity feed (ADR-030, ADR-031).
-- Phase 1, step 6: Points. Append-only `points.ledger` fed only by task events: completion pays the assignee (or completer), reopen and delete reverse whatever each person holds for that task. Leaderboard for this week, this month and all time; history endpoint; one-off backfill from the activity log (ADR-032, ADR-033). **Built and tested, not yet deployed.**
+- Phase 1, step 6: Points. Append-only `points.ledger` fed only by task events: completion pays the assignee (or completer), reopen and delete reverse whatever each person holds for that task. Leaderboard for this week, this month and all time; history endpoint; one-off backfill from the activity log (ADR-032, ADR-033).
 - Hosting moved to Hetzner (ADR-034): `infra/` holds the server's first-boot config, Docker Compose file and Caddy config; CI pushes images to GitHub's registry and deploys over SSH.
 
 **Open questions**
@@ -26,8 +26,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 **Next**
 
-- Owner: server created (`65.109.172.182`). Domain for now is the free `65-109-172-182.sslip.io` (no DNS setup needed; buy a real domain later). Add secrets `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DOMAIN`, and Google redirect URI `https://65-109-172-182.sslip.io/signin-google`. Then re-run CI to deploy.
-- Confirm on the live site: sign-in, household, invite, board, activity feed, leaderboard.
+- Owner: confirm on the live site: sign-in, household, invite, board, activity feed, leaderboard.
 - Phase 1, step 7: Shopping list. Permanent list, add and tick off items, ticked items kept for history (ADR-010).
 
 **Follow-ups**

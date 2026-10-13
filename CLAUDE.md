@@ -52,7 +52,7 @@ web/                 React app
 - Each module implements `IModule` and is listed explicitly in `Program.cs`. Its endpoints live under `/api/{module.Name}`.
 - Every household-owned table has `household_id` and is filtered by it (ADR-009).
 - Primary keys are UUIDv7 (`Guid.CreateVersion7()`, ADR-013).
-- No secrets in the repo; it is public. Production configuration comes from Fly secrets.
+- No secrets in the repo; it is public. Production configuration comes from GitHub Actions secrets, which the deploy job writes to `/opt/family-app/.env` on the server.
 - `/api/health/live` never touches the database; `/api/health` checks Postgres and is what the deploy smoke test calls (ADR-019).
 - Schema changes: add a new numbered script, `src/Modules/<Name>/Migrations/NNNN_description.sql`. Never edit a script that has been deployed; write a new one. Each module owns its own Postgres schema; no foreign keys across modules. Keep the module's EF mapping in step with its scripts; integration tests catch mismatches.
 - Migrations run on startup in Development and tests (`Database:MigrateOnStartup`), and in production only as a one-off container before the new version starts (`dotnet FamilyApp.Host.dll migrate`, in the deploy job).
