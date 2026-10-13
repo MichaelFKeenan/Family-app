@@ -1,0 +1,37 @@
+# Production on the Hetzner server (ADR-034). The deploy job copies this file and the Caddyfile
+# to /opt/family-app and writes .env next to them; nothing here is edited on the server by hand.
+
+services:
+  app:
+    image: ${IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      # Caddy terminates TLS and forwards plain http. Trust its X-Forwarded-Proto so the app
+      # knows requests were https (Secure cookies, Google's redirect URL). Safe because the app
+      # port is reachable only from Caddy, on this private Docker network.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates live here; losing them means re-issuing, and Let's Encrypt rate-limits that.
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -25,7 +25,7 @@ https://claude.ai/code/artifact/d76d14ee-5270-4a19-b9ba-601eaaa58972
 - Sign-in: Google via the OpenID Connect handler, then our own 30-day cookie holding only our user id and name (ADR-022). Read the current user with `principal.TryGetUserId(...)` from SharedKernel.
 - React, TypeScript and Vite in `web/`, TanStack Query for server state.
 - One Docker image: the host serves both `/api` and the built React app (same origin, ADR-008, ADR-012).
-- Hosting: Fly.io plus Neon Postgres (ADR-015, ADR-018).
+- Hosting: one fixed-price Hetzner server running Docker Compose (app + Caddy for HTTPS), plus Neon Postgres on its free plan (ADR-034). Server config lives in `infra/`; never change the server by hand, change `infra/` and deploy. The owner wants no possibility of a surprise bill: don't add anything metered.
 
 ## Layout
 
@@ -53,9 +53,9 @@ web/                 React app
 - Every household-owned table has `household_id` and is filtered by it (ADR-009).
 - Primary keys are UUIDv7 (`Guid.CreateVersion7()`, ADR-013).
 - No secrets in the repo; it is public. Production configuration comes from Fly secrets.
-- Platform probes use `/api/health/live`, which never touches the database (ADR-019).
+- `/api/health/live` never touches the database; `/api/health` checks Postgres and is what the deploy smoke test calls (ADR-019).
 - Schema changes: add a new numbered script, `src/Modules/<Name>/Migrations/NNNN_description.sql`. Never edit a script that has been deployed; write a new one. Each module owns its own Postgres schema; no foreign keys across modules. Keep the module's EF mapping in step with its scripts; integration tests catch mismatches.
-- Migrations run on startup in Development and tests (`Database:MigrateOnStartup`), and in production only in Fly's release command (`dotnet FamilyApp.Host.dll migrate`).
+- Migrations run on startup in Development and tests (`Database:MigrateOnStartup`), and in production only as a one-off container before the new version starts (`dotnet FamilyApp.Host.dll migrate`, in the deploy job).
 
 ## Commands
 

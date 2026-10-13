@@ -1,0 +1,58 @@
+#cloud-config
+# First-boot setup for the production server (ADR-034).
+# Paste this whole file into the "Cloud config" box when creating the server in Hetzner.
+# It is safe to keep in a public repo: it holds only a public key, no secrets.
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - unattended-upgrades
+  - fail2ban
+
+# The account GitHub Actions deploys as. Key-only login; no password exists.
+users:
+  - name: deploy
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJtCwF82cntMpCQM/OYIbP9IO06rM7H5fVrBc0jyOWH2 family-app-deploy
+
+write_files:
+  # SSH: keys only, no root login. Hetzner's web console still works for emergencies.
+  - path: /etc/ssh/sshd_config.d/99-family-app.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      AllowUsers deploy
+  # Install security updates daily, rebooting at 04:00 if one needs it.
+  - path: /etc/apt/apt.conf.d/52family-app-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+  # Ban IPs that repeatedly fail SSH logins.
+  - path: /etc/fail2ban/jail.d/sshd.local
+    content: |
+      [sshd]
+      enabled = true
+      maxretry = 5
+      bantime = 1h
+  # Keep container logs from filling the disk.
+  - path: /etc/docker/daemon.json
+    content: |
+      { "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }
+
+runcmd:
+  # A small swap file gives a 2 GB server headroom during image pulls and .NET start-up.
+  - fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  # Docker from Docker's own install script (official packages, kept current by apt).
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker deploy
+  - install -d -o deploy -g deploy -m 750 /opt/family-app
+  - systemctl enable --now fail2ban
+  - systemctl restart ssh

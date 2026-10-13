@@ -68,88 +68,128 @@ jobs:
       - name: Type-check and build
         run: npm run build
 
+  # Builds the production image. On main it is pushed to GitHub's container registry, tagged with
+  # the commit, so every deploy names exactly which build is running (ADR-034).
   image:
-    name: Docker image builds
+    name: Docker image
     runs-on: ubuntu-latest
     needs: [backend, frontend]
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/michaelfkeenan/family-app
     steps:
       - uses: actions/checkout@v6
 
       - name: Build image
-        run: docker build -t family-app:ci .
+        run: docker build -t "$IMAGE:${{ github.sha }}" .
 
-  # Continuous deployment (ADR-020): every green push to main goes live.
+      - name: Push to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push "$IMAGE:${{ github.sha }}"
+          docker tag "$IMAGE:${{ github.sha }}" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+
+  # Continuous deployment (ADR-020, ADR-034): every green push to main goes live on the server.
   deploy:
-    name: Deploy to Fly
+    name: Deploy to server
     runs-on: ubuntu-latest
     needs: [image]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: read
     concurrency:
       group: deploy-production
       cancel-in-progress: false
     env:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      IMAGE: ghcr.io/michaelfkeenan/family-app
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DOMAIN: ${{ secrets.DOMAIN }}
       NEON_CONNECTION_STRING: ${{ secrets.NEON_CONNECTION_STRING }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
     steps:
-      - name: Check secrets are configured
-        id: secrets
+      - name: Check deploy settings
+        id: ready
         run: |
-          if [ -z "$FLY_API_TOKEN" ] || [ -z "$NEON_CONNECTION_STRING" ]; then
-            echo "::notice::Skipping deploy: add FLY_API_TOKEN and NEON_CONNECTION_STRING as repository secrets."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
+          missing=""
+          for name in DEPLOY_HOST DEPLOY_SSH_KEY DOMAIN NEON_CONNECTION_STRING; do
+            [ -z "${!name}" ] && missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Skipping deploy: missing repository secrets:$missing"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
           else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v6
-        if: steps.secrets.outputs.ready == 'true'
+        if: steps.ready.outputs.ok == 'true'
 
-      - uses: superfly/flyctl-actions/setup-flyctl@1.6
-        if: steps.secrets.outputs.ready == 'true'
-
-      - name: Create the Fly app if it does not exist
-        if: steps.secrets.outputs.ready == 'true'
+      # Trust-on-first-use: the server's host key is fetched each run rather than pinned, so a
+      # network attacker between GitHub and Hetzner could impersonate the server (ADR-034).
+      - name: Set up SSH
+        if: steps.ready.outputs.ok == 'true'
         run: |
-          APP=$(grep -E '^app *=' fly.toml | sed -E 's/^app *= *"([^"]+)".*/\1/')
-          echo "APP=$APP" >> "$GITHUB_ENV"
-          # Only create the app if Fly says it doesn't exist. Any other failure (an expired or
-          # under-privileged token, say) is reported as an annotation instead of being hidden.
-          if flyctl status --app "$APP" > status.txt 2>&1; then
-            echo "App $APP exists."
-          elif grep -qiE "could not find app|app not found|not found" status.txt; then
-            flyctl apps create "$APP" --org personal
-          else
-            echo "::error title=flyctl status failed::$(head -c 600 status.txt | tr '\n' ' ')"
-            exit 1
-          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          ssh-keyscan -t ed25519 "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          printf 'Host server\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/deploy\n  IdentitiesOnly yes\n' "$DEPLOY_HOST" > ~/.ssh/config
 
-      # --stage stores secrets without restarting; the deploy below picks them up.
-      # Google sign-in is optional: without it the app runs and /login answers 503.
-      - name: Set app secrets
-        if: steps.secrets.outputs.ready == 'true'
+      # Secrets travel from GitHub to a 600-mode .env file on the server; they never enter the image.
+      - name: Write production settings
+        if: steps.ready.outputs.ok == 'true'
         run: |
-          secrets=("ConnectionStrings__Postgres=$NEON_CONNECTION_STRING")
-          if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
-            secrets+=("Authentication__Google__ClientId=$GOOGLE_CLIENT_ID")
-            secrets+=("Authentication__Google__ClientSecret=$GOOGLE_CLIENT_SECRET")
-          else
+          umask 077
+          {
+            echo "IMAGE=$IMAGE"
+            echo "IMAGE_TAG=${{ github.sha }}"
+            echo "DOMAIN=$DOMAIN"
+            echo "ConnectionStrings__Postgres='$NEON_CONNECTION_STRING'"
+            if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+              echo "Authentication__Google__ClientId='$GOOGLE_CLIENT_ID'"
+              echo "Authentication__Google__ClientSecret='$GOOGLE_CLIENT_SECRET'"
+            fi
+          } > production.env
+          if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then
             echo "::notice::Google sign-in not configured: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET secrets."
           fi
-          flyctl secrets set --stage --app "$APP" "${secrets[@]}"
 
-      # --ha=false: one machine, not Fly's default of two (ADR-020).
-      - name: Deploy
-        if: steps.secrets.outputs.ready == 'true'
-        run: flyctl deploy --remote-only --ha=false --app "$APP"
+      - name: Copy configuration to the server
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          scp -q infra/compose.yml infra/Caddyfile server:/opt/family-app/
+          scp -q production.env server:/opt/family-app/.env
+          ssh server 'chmod 600 /opt/family-app/.env'
+
+      # Same order as Fly's release command: migrate first, and only start the new version if that
+      # worked. If migration fails, set -e stops here and the old containers keep running (ADR-021).
+      - name: Migrate and restart
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          ssh server "set -e
+            cd /opt/family-app
+            echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+            docker compose pull --quiet app
+            docker compose run --rm --no-deps app dotnet FamilyApp.Host.dll migrate
+            docker compose up -d --remove-orphans
+            docker logout ghcr.io
+            docker image prune -f"
 
       - name: Smoke test
-        if: steps.secrets.outputs.ready == 'true'
+        if: steps.ready.outputs.ok == 'true'
         run: |
-          for i in 1 2 3 4 5 6; do
-            if curl -fsS "https://$APP.fly.dev/api/health"; then echo; exit 0; fi
+          # The first deploy waits for Caddy to get a certificate, so allow a couple of minutes.
+          for i in $(seq 1 18); do
+            if curl -fsS "https://$DOMAIN/api/health"; then echo; exit 0; fi
             sleep 10
           done
-          echo "::error::https://$APP.fly.dev/api/health did not report healthy"
+          echo "::error::https://$DOMAIN/api/health did not report healthy"
+          ssh server 'cd /opt/family-app && docker compose ps && docker compose logs --tail 40 app caddy' || true
           exit 1
