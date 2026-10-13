@@ -114,7 +114,16 @@ jobs:
         run: |
           APP=$(grep -E '^app *=' fly.toml | sed -E 's/^app *= *"([^"]+)".*/\1/')
           echo "APP=$APP" >> "$GITHUB_ENV"
-          flyctl status --app "$APP" > /dev/null 2>&1 || flyctl apps create "$APP" --org personal
+          # Only create the app if Fly says it doesn't exist. Any other failure (an expired or
+          # under-privileged token, say) is reported as an annotation instead of being hidden.
+          if flyctl status --app "$APP" > status.txt 2>&1; then
+            echo "App $APP exists."
+          elif grep -qiE "could not find app|app not found|not found" status.txt; then
+            flyctl apps create "$APP" --org personal
+          else
+            echo "::error title=flyctl status failed::$(head -c 600 status.txt | tr '\n' ' ')"
+            exit 1
+          fi
 
       # --stage stores secrets without restarting; the deploy below picks them up.
       # Google sign-in is optional: without it the app runs and /login answers 503.
