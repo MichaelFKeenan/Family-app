@@ -634,3 +634,11 @@ body {
 .board-note {
   margin: 0 0 0.75rem;
 }
+
+.item-menu {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

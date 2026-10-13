@@ -39,8 +39,11 @@ public sealed record PointsReversed(Guid HouseholdId, Guid ActorId, Guid Recipie
 
 public sealed record ShoppingItemAdded(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name, string? Quantity) : IDomainEvent;
 
-/// <summary>Ticked off: bought, or no longer needed. The row is kept as purchase history (ADR-010).</summary>
-public sealed record ShoppingItemChecked(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name) : IDomainEvent;
+/// <summary>
+/// Ticked off. The row is kept as purchase history (ADR-010). <see cref="Reason"/> is "bought" or
+/// "notNeeded" (ADR-038); events from before it existed read as "bought", which is what they meant.
+/// </summary>
+public sealed record ShoppingItemChecked(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name, string Reason = "bought") : IDomainEvent;
 
 /// <summary>A tick undone: the item is back on the active list.</summary>
 public sealed record ShoppingItemUnchecked(Guid HouseholdId, Guid ActorId, Guid ItemId, string Name) : IDomainEvent;

@@ -99,10 +99,11 @@ public sealed class ShoppingService(ShoppingDbContext db, CurrentHousehold house
     }
 
     /// <summary>
-    /// Tick an item off. Idempotent: ticking an already-ticked item succeeds and changes nothing, because
-    /// two people in the shop ticking the same thing both meant the same outcome.
+    /// Tick an item off, as bought or as no longer needed (ADR-038). Idempotent: ticking an already-ticked
+    /// item succeeds and changes nothing, because two people in the shop ticking the same thing both meant
+    /// the same outcome. The first tick's reason stands.
     /// </summary>
-    public async Task<Outcome<ShoppingItemDto>> CheckAsync(Guid id, Guid userId, CancellationToken cancellationToken)
+    public async Task<Outcome<ShoppingItemDto>> CheckAsync(Guid id, Guid userId, CheckReason reason, CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
         db.JoinRequestTransaction();
@@ -111,14 +112,16 @@ public sealed class ShoppingService(ShoppingDbContext db, CurrentHousehold house
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(i => i.CheckedAt, (DateTimeOffset?)now)
-                    .SetProperty(i => i.CheckedBy, (Guid?)userId),
+                    .SetProperty(i => i.CheckedBy, (Guid?)userId)
+                    .SetProperty(i => i.CheckReason, (CheckReason?)reason),
                 cancellationToken);
 
         var item = await db.Items.AsNoTracking().SingleOrDefaultAsync(i => i.Id == id, cancellationToken);
         if (item is null) return new Outcome<ShoppingItemDto>.NotFound();
 
         // Only the request that actually changed the row records it, so a double tick is one event.
-        if (changed == 1) events.Raise(new ShoppingItemChecked(item.HouseholdId, userId, item.Id, item.Name));
+        if (changed == 1)
+            events.Raise(new ShoppingItemChecked(item.HouseholdId, userId, item.Id, item.Name, reason == CheckReason.NotNeeded ? "notNeeded" : "bought"));
         return new Outcome<ShoppingItemDto>.Ok(ShoppingItemDto.From(item));
     }
 
@@ -134,7 +137,8 @@ public sealed class ShoppingService(ShoppingDbContext db, CurrentHousehold house
                 .ExecuteUpdateAsync(
                     setters => setters
                         .SetProperty(i => i.CheckedAt, (DateTimeOffset?)null)
-                        .SetProperty(i => i.CheckedBy, (Guid?)null),
+                        .SetProperty(i => i.CheckedBy, (Guid?)null)
+                        .SetProperty(i => i.CheckReason, (CheckReason?)null),
                     cancellationToken);
         }
         catch (Exception ex) when (IsUniqueViolation(ex))

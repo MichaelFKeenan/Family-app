@@ -17,6 +17,9 @@ export function Shopping() {
   const members = useQuery({ queryKey: ['members'], queryFn: api.members });
 
   const [error, setError] = useState<string | null>(null);
+  // The row whose extra actions are showing. "Not needed" and "Remove" sit behind "More" so the
+  // everyday action, ticking as bought, is the only thing on each row (ADR-038).
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['shopping'] });
@@ -24,11 +27,12 @@ export function Shopping() {
   };
 
   const tick = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: 'check' | 'uncheck' }) => api.tickShoppingItem(id, action),
+    mutationFn: ({ id, action }: { id: string; action: 'check' | 'not-needed' | 'uncheck' }) => api.tickShoppingItem(id, action),
     onMutate: async ({ id, action }) => {
       setError(null);
+      setMenuFor(null);
       await queryClient.cancelQueries({ queryKey: ['shopping'] });
-      const from = action === 'check' ? ACTIVE : CHECKED;
+      const from = action === 'uncheck' ? CHECKED : ACTIVE;
       queryClient.setQueryData<ShoppingItem[]>(from, (items) => items?.filter((i) => i.id !== id));
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : "Couldn't update the list. Check your signal and try again."),
@@ -39,6 +43,7 @@ export function Shopping() {
     mutationFn: api.removeShoppingItem,
     onMutate: async (id) => {
       setError(null);
+      setMenuFor(null);
       await queryClient.cancelQueries({ queryKey: ['shopping'] });
       queryClient.setQueryData<ShoppingItem[]>(ACTIVE, (items) => items?.filter((i) => i.id !== id));
     },
@@ -73,9 +78,27 @@ export function Shopping() {
                 </span>
                 {item.note && <span className="muted item-note">{item.note}</span>}
               </div>
-              <button className="link danger" onClick={() => remove.mutate(item.id)} aria-label={`Remove ${item.name}`}>
-                Remove
-              </button>
+              {menuFor === item.id ? (
+                <div className="item-menu">
+                  <button className="link" onClick={() => tick.mutate({ id: item.id, action: 'not-needed' })}>
+                    Not needed
+                  </button>
+                  <button
+                    className="link danger"
+                    onClick={() => remove.mutate(item.id)}
+                    title="Added by mistake: delete it without keeping it in history"
+                  >
+                    Remove
+                  </button>
+                  <button className="link" onClick={() => setMenuFor(null)} aria-label="Close">
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button className="link" onClick={() => setMenuFor(item.id)} aria-label={`More for ${item.name}`}>
+                  More
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -93,6 +116,7 @@ export function Shopping() {
                     {item.name}
                   </span>
                   <span className="muted item-note">
+                    {item.checkReason === 'notNeeded' ? 'Not needed · ' : ''}
                     {who(item.checkedBy, members.data ?? [])} · {when(item.checkedAt!)}
                   </span>
                 </div>

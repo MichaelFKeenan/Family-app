@@ -76,6 +76,7 @@ export type ShoppingItem = {
   addedAt: string;
   checkedBy: string | null;
   checkedAt: string | null;
+  checkReason: 'bought' | 'notNeeded' | null; // ADR-038
 };
 
 export class ApiError extends Error {
@@ -145,7 +146,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
-  tickShoppingItem: (id: string, action: 'check' | 'uncheck') =>
+  tickShoppingItem: (id: string, action: 'check' | 'not-needed' | 'uncheck') =>
     request<ShoppingItem>(`/api/shopping/${id}/${action}`, { method: 'POST' }),
   removeShoppingItem: (id: string) => request<void>(`/api/shopping/${id}`, { method: 'DELETE' }),
 

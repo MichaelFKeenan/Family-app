@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FamilyApp.Host.Events;
 using FamilyApp.Modules.Shopping;
+using FamilyApp.Modules.Shopping.Data;
 
 namespace FamilyApp.Integration.Tests;
 
@@ -71,6 +72,44 @@ public class ShoppingTests(FamilyAppFactory factory) : IClassFixture<FamilyAppFa
         Assert.Null(unchecked_.CheckedBy);
         Assert.Single(await ActiveAsync(admin.Client));
         Assert.Empty(await CheckedAsync(admin.Client));
+    }
+
+    [Fact]
+    public async Task Not_needed_leaves_the_list_but_is_not_a_purchase()
+    {
+        var (_, admin, _) = await factory.NewHouseholdAsync("Changed my mind");
+        var bought = await AddAsync(admin.Client, "Pasta");
+        var skipped = await AddAsync(admin.Client, "Crisps");
+
+        var boughtResult = await PostAsync(admin.Client, $"/api/shopping/{bought.Id}/check");
+        var skippedResult = await PostAsync(admin.Client, $"/api/shopping/{skipped.Id}/not-needed");
+
+        Assert.Equal(CheckReason.Bought, boughtResult.CheckReason);
+        Assert.Equal(CheckReason.NotNeeded, skippedResult.CheckReason);
+        Assert.Empty(await ActiveAsync(admin.Client));
+        var raw = await admin.Client.GetStringAsync("/api/shopping/checked");
+        Assert.Contains("\"checkReason\":\"notNeeded\"", raw);
+
+        var reasons = (await ActivityAsync(admin.Client))
+            .Where(a => a.Type == "ShoppingItemChecked")
+            .ToDictionary(a => a.Payload.GetProperty("name").GetString()!, a => a.Payload.GetProperty("reason").GetString());
+        Assert.Equal("bought", reasons["Pasta"]);
+        Assert.Equal("notNeeded", reasons["Crisps"]);
+    }
+
+    [Fact]
+    public async Task The_first_tick_wins_and_unticking_clears_the_reason()
+    {
+        var (_, admin, members) = await factory.NewHouseholdAsync("First wins", members: 1);
+        var item = await AddAsync(admin.Client, "Yoghurt");
+
+        await PostAsync(admin.Client, $"/api/shopping/{item.Id}/not-needed");
+        var second = await PostAsync(members[0].Client, $"/api/shopping/{item.Id}/check");
+        var unticked = await PostAsync(admin.Client, $"/api/shopping/{item.Id}/uncheck");
+
+        Assert.Equal(CheckReason.NotNeeded, second.CheckReason);
+        Assert.Equal(admin.Id, second.CheckedBy);
+        Assert.Null(unticked.CheckReason);
     }
 
     [Fact]

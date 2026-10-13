@@ -10,10 +10,11 @@ public sealed record ShoppingItemDto(
     Guid AddedBy,
     DateTimeOffset AddedAt,
     Guid? CheckedBy,
-    DateTimeOffset? CheckedAt)
+    DateTimeOffset? CheckedAt,
+    CheckReason? CheckReason)
 {
     internal static ShoppingItemDto From(ShoppingItem item) => new(
-        item.Id, item.Name, item.Quantity, item.Note, item.AddedBy, item.AddedAt, item.CheckedBy, item.CheckedAt);
+        item.Id, item.Name, item.Quantity, item.Note, item.AddedBy, item.AddedAt, item.CheckedBy, item.CheckedAt, item.CheckReason);
 }
 
 public sealed record AddItemRequest(string? Name, string? Quantity, string? Note);

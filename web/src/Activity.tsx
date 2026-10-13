@@ -65,7 +65,7 @@ function describe(entry: ActivityEntry, members: Member[]): string {
     case 'ShoppingItemAdded':
       return `${actor} put ${item(p)} on the shopping list`;
     case 'ShoppingItemChecked':
-      return `${actor} ticked off ${item(p)}`;
+      return p.reason === 'notNeeded' ? `${actor} marked ${item(p)} as not needed` : `${actor} ticked off ${item(p)}`;
     case 'ShoppingItemUnchecked':
       return `${actor} put ${item(p)} back on the list`;
     case 'ShoppingItemRemoved':

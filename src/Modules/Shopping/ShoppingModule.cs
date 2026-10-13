@@ -45,7 +45,15 @@ public sealed class ShoppingModule : IModule
         shopping.MapPost("/{id:guid}/check", async (Guid id, ClaimsPrincipal user, ShoppingService service, CancellationToken ct) =>
         {
             user.TryGetUserId(out var userId);
-            return ToHttp(await service.CheckAsync(id, userId, ct));
+            return ToHttp(await service.CheckAsync(id, userId, CheckReason.Bought, ct));
+        });
+
+        // Off the list without buying it: kept in history, but not counted as a purchase (ADR-038).
+        // A separate command rather than a body on /check, like the task commands (ADR-014).
+        shopping.MapPost("/{id:guid}/not-needed", async (Guid id, ClaimsPrincipal user, ShoppingService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return ToHttp(await service.CheckAsync(id, userId, CheckReason.NotNeeded, ct));
         });
 
         shopping.MapPost("/{id:guid}/uncheck", async (Guid id, ClaimsPrincipal user, ShoppingService service, CancellationToken ct) =>

@@ -34,6 +34,9 @@ public sealed class ShoppingDbContext(DbContextOptions<ShoppingDbContext> option
             item.Property(i => i.AddedAt).HasColumnName("added_at");
             item.Property(i => i.CheckedBy).HasColumnName("checked_by");
             item.Property(i => i.CheckedAt).HasColumnName("checked_at");
+            item.Property(i => i.CheckReason).HasColumnName("check_reason").HasConversion(
+                reason => reason == null ? null : reason == Data.CheckReason.NotNeeded ? "not_needed" : "bought",
+                value => value == null ? null : value == "not_needed" ? Data.CheckReason.NotNeeded : Data.CheckReason.Bought);
         });
     }
 
@@ -66,4 +69,12 @@ public sealed class ShoppingItem
     public DateTimeOffset AddedAt { get; set; }
     public Guid? CheckedBy { get; set; }
     public DateTimeOffset? CheckedAt { get; set; }
+    public CheckReason? CheckReason { get; set; }
+}
+
+/// <summary>Why an item left the list (ADR-038).</summary>
+public enum CheckReason
+{
+    Bought,
+    NotNeeded,
 }

@@ -47,13 +47,15 @@ personal_tasks = [
 ]
 items = [
     {"id": f"0199e000-0000-7000-8000-0000000002{i:02}", "name": n, "quantity": q, "note": note, "addedBy": ALEX,
-     "addedAt": iso(300 - i), "checkedBy": None, "checkedAt": None}
+     "addedAt": iso(300 - i), "checkedBy": None, "checkedAt": None, "checkReason": None}
     for i, (n, q, note) in enumerate([("Milk", "2", "semi-skimmed"), ("Bread", None, None),
                                       ("Washing-up liquid", None, "the lemon one"), ("Bananas", "6", None),
                                       ("A really long item name that should wrap nicely on a small phone screen", "1 big bag", None)])
 ]
 checked = [{"id": "0199e000-0000-7000-8000-000000000301", "name": "Coffee", "quantity": None, "note": None, "addedBy": ALEX,
-            "addedAt": iso(900), "checkedBy": SAM, "checkedAt": iso(30)}]
+            "addedAt": iso(900), "checkedBy": SAM, "checkedAt": iso(30), "checkReason": "bought"},
+           {"id": "0199e000-0000-7000-8000-000000000302", "name": "Crisps", "quantity": None, "note": None, "addedBy": SAM,
+            "addedAt": iso(900), "checkedBy": ALEX, "checkedAt": iso(45), "checkReason": "notNeeded"}]
 members = [{"userId": ALEX, "displayName": "Alex Example", "avatarUrl": None, "role": "admin", "joinedAt": iso(90000)},
            {"userId": SAM, "displayName": "Sam Example", "avatarUrl": None, "role": "member", "joinedAt": iso(80000)}]
 activity = [
@@ -74,6 +76,7 @@ SCENARIOS = {
     "board-errors": ("#board", {"/api/tasks": 500, "/api/points/leaderboard": 500, "/api/activity": 500}),
     "shopping-errors": ("#shopping", {"/api/shopping": 500, "/api/shopping/checked": 500}),
     "shopping-offline": ("#shopping", {}),
+    "shopping-menu": ("#shopping", {}),
 }
 
 DEFAULTS = {
@@ -111,6 +114,9 @@ with sync_playwright() as p:
             page.goto(f"{BASE}/{hash_}")
             # Long enough for a failed request's one retry (main.tsx) to give up.
             page.wait_for_timeout(3000)
+            if name.endswith("-menu"):
+                page.get_by_label("More for Bread").click()
+                page.wait_for_timeout(300)
             if name.endswith("-offline"):
                 page.context.set_offline(True)
                 page.wait_for_timeout(500)
