@@ -35,6 +35,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - [ ] Reset the Neon database password (it was shared in a chat), then update the `NEON_CONNECTION_STRING` GitHub secret.
 - [ ] Delete the Fly app and the `FLY_API_TOKEN` GitHub secret (no longer used).
 - [ ] Pin the server's SSH host key as a secret instead of trusting it on each deploy (ADR-034).
+- [ ] Rate limiting, if availability ever matters (the owner prioritises cost, and an attack can't raise the bill). `/api/health` is public and queries Postgres on every call, so a flood could use up Neon's free compute hours and pause the database until next month. Options: cache or rate-limit `/api/health`, ASP.NET Core's rate limiter per IP for anonymous requests, Cloudflare's free plan in front.
 - [ ] Commit `web/package-lock.json` after the first local `npm install`, so builds are reproducible.
 
 **Decisions not visible in the code**
