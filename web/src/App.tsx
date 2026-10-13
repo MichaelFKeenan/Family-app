@@ -5,6 +5,7 @@ import { Activity } from './Activity';
 import { Board } from './Board';
 import { HouseholdPanel } from './HouseholdPanel';
 import { Leaderboard } from './Leaderboard';
+import { OfflineBanner } from './Problem';
 import { Shopping } from './Shopping';
 
 export function App() {
@@ -35,6 +36,8 @@ export function App() {
           </div>
         )}
       </header>
+
+      <OfflineBanner />
 
       {me.isPending && <section className="card">Checking sign-in…</section>}
       {me.isError && <section className="card bad">Couldn't check whether you're signed in.</section>}

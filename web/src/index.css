@@ -192,6 +192,34 @@ body {
   margin: 0;
 }
 
+/* Phones: a smaller title, so the name and "Sign out" fit on the same line. */
+@media (max-width: 30rem) {
+  .page {
+    padding: 1rem 0.75rem;
+  }
+
+  .top {
+    flex-wrap: nowrap;
+  }
+
+  .top h1 {
+    font-size: 1.5rem;
+    white-space: nowrap;
+  }
+
+  .signed-in {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .signed-in .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .board {
   margin-bottom: 1rem;
 }
@@ -534,8 +562,8 @@ body {
 
 .tick {
   flex: none;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1.9rem;
+  height: 1.9rem;
   border: 2px solid var(--border);
   border-radius: 50%;
   background: none;
@@ -570,4 +598,31 @@ body {
 .items.done .item-name {
   text-decoration: line-through;
   color: var(--muted);
+}
+
+.load-error {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.offline {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.5rem;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.9rem;
+}
+
+/* Remove sits on every shopping row; keep it quiet until it's needed. */
+.items .link.danger {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.items .link,
+.load-error .link {
+  margin-top: 0;
 }

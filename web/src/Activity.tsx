@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type ActivityEntry, type Member } from './api';
+import { LoadError } from './Problem';
 
 // Each entry is a domain event from the activity log (ADR-005), rendered as a sentence.
 export function Activity() {
@@ -8,6 +9,13 @@ export function Activity() {
 
   // Points changes are already visible in the completion line ("… (5 pts)") and on the leaderboard.
   const entries = (activity.data ?? []).filter((entry) => !entry.type.startsWith('Points')).slice(0, 15);
+  if (activity.isError)
+    return (
+      <section className="card">
+        <h2>Recent activity</h2>
+        <LoadError what="recent activity" onRetry={() => void activity.refetch()} />
+      </section>
+    );
   if (entries.length === 0) return null;
 
   return (

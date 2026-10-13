@@ -67,6 +67,7 @@ SCENARIOS = {
     "no-household": ("", {"/api/households": []}),
     "board-errors": ("#board", {"/api/tasks": 500, "/api/points/leaderboard": 500, "/api/activity": 500}),
     "shopping-errors": ("#shopping", {"/api/shopping": 500, "/api/shopping/checked": 500}),
+    "shopping-offline": ("#shopping", {}),
 }
 
 DEFAULTS = {
@@ -100,7 +101,11 @@ with sync_playwright() as p:
             page = browser.new_page(viewport={"width": width, "height": 844}, device_scale_factor=1)
             page.route("**/api/**", handler(overrides))
             page.goto(f"{BASE}/{hash_}")
-            page.wait_for_timeout(1500)
+            # Long enough for a failed request's one retry (main.tsx) to give up.
+            page.wait_for_timeout(3000)
+            if name.endswith("-offline"):
+                page.context.set_offline(True)
+                page.wait_for_timeout(500)
             page.screenshot(path=f"{OUT}/{device}-{name}.png", full_page=True)
             page.close()
     browser.close()

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, type Member, type ShoppingItem } from './api';
+import { LoadError } from './Problem';
 
 const ACTIVE = ['shopping', 'active'];
 const CHECKED = ['shopping', 'checked'];
@@ -55,7 +56,7 @@ export function Shopping() {
           Shopping list{active.data && active.data.length > 0 && <span className="muted count"> {active.data.length}</span>}
         </h2>
         {active.isPending && <p className="muted">Loading…</p>}
-        {active.isError && <p className="bad">Couldn't load the list.</p>}
+        {active.isError && <LoadError what="the list" onRetry={() => void active.refetch()} />}
         {active.data?.length === 0 && <p className="muted">Nothing to buy. Add something above.</p>}
         <ul className="items">
           {active.data?.map((item) => (
@@ -135,7 +136,7 @@ function AddItem({ onError, onAdded }: { onError: (message: string | null) => vo
       <div className="row">
         <input
           className="input grow"
-          placeholder="Add an item, e.g. Milk"
+          placeholder="Add an item"
           value={name}
           maxLength={100}
           onChange={(e) => {

@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LoadError } from './Problem';
 import { api, ApiError, type Category, type Member, type Priority, type Task, type TaskStatus } from './api';
 
 const COLUMNS: { status: TaskStatus; title: string }[] = [
@@ -37,7 +38,12 @@ export function Board() {
   );
 
   if (tasks.isPending) return <section className="card">Loading the board…</section>;
-  if (tasks.isError) return <section className="card bad">Couldn't load the board.</section>;
+  if (tasks.isError)
+    return (
+      <section className="card">
+        <LoadError what="the board" onRetry={() => void tasks.refetch()} />
+      </section>
+    );
 
   return (
     <section className="board">

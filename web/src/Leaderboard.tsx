@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
+import { LoadError } from './Problem';
 
 type Period = 'week' | 'month' | 'all';
 
@@ -28,6 +29,8 @@ export function Leaderboard() {
   const leaderboard = useQuery({
     queryKey: ['leaderboard', period],
     queryFn: () => api.leaderboard(periodStart(period)),
+    // Keep showing the last period's totals while the next loads, instead of flashing "Loading…".
+    placeholderData: (previous) => previous,
   });
 
   // Everyone appears, including people on zero, ranked by points; ties share a rank.
@@ -56,7 +59,10 @@ export function Leaderboard() {
         </div>
       </div>
 
-      {leaderboard.isError && <p className="bad">Couldn't load the leaderboard.</p>}
+      {leaderboard.isError && <LoadError what="the leaderboard" onRetry={() => void leaderboard.refetch()} />}
+      {leaderboard.isPending && <p className="muted">Loading…</p>}
+      {/* Only with real totals: showing everyone on 0 while loading or after an error would be wrong. */}
+      {leaderboard.isSuccess && (
       <ol className="leaderboard">
         {rows.map(({ member, points }) => {
           const rank = rankOf(points);
@@ -76,6 +82,7 @@ export function Leaderboard() {
           );
         })}
       </ol>
+      )}
       {rows.every((row) => row.points === 0) && leaderboard.isSuccess && (
         <p className="muted">
           {period === 'all' ? 'No points yet.' : `No points ${period === 'week' ? 'this week' : 'this month'} yet.`} Complete a
