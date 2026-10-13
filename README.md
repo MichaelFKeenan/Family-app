@@ -18,6 +18,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - Phase 1, step 4: Tasks. Board (to do, doing, done) with priority, points, category, assignee and due date; start, complete, reopen, edit, delete; categories with defaults. Household isolation by EF global query filter plus a composite foreign key; optimistic concurrency on a `version` column (ADR-028).
 - Phase 1, step 5: domain events. Every write request is one transaction shared by all modules; events raised during it are logged to `platform.activity_events` and dispatched to handlers before commit. Default categories come from a `HouseholdCreated` handler. Recent-activity feed (ADR-030, ADR-031).
 - Phase 1, step 6: Points. Append-only `points.ledger` fed only by task events: completion pays the assignee (or completer), reopen and delete reverse whatever each person holds for that task. Leaderboard for this week, this month and all time; history endpoint; one-off backfill from the activity log (ADR-032, ADR-033).
+- Phase 1, step 7: Shopping list. Add (once per name, case-insensitive), tick and untick (idempotent), remove mistakes, recently ticked with undo; ticked items stay as history. Shopping tab at `/#shopping` (ADR-010, ADR-035).
 - Hosting moved to Hetzner (ADR-034): `infra/` holds the server's first-boot config, Docker Compose file and Caddy config; CI pushes images to GitHub's registry and deploys over SSH.
 
 **Open questions**
@@ -26,8 +27,8 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 **Next**
 
-- Owner: confirm on the live site: sign-in, household, invite, board, activity feed, leaderboard.
-- Phase 1, step 7: Shopping list. Permanent list, add and tick off items, ticked items kept for history (ADR-010).
+- Owner: confirm on the live site: sign-in, household, invite, board, activity feed, leaderboard, shopping list.
+- Phase 1, step 8: Polish. Mobile layout, error states, Neon backups/restore check. Then phase 1 is done.
 
 **Follow-ups**
 
