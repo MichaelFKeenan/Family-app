@@ -29,8 +29,25 @@ public sealed class TasksModule : IModule
         // Every endpoint here acts on the current household; resolving it happens once, here.
         var tasks = group.MapGroup("").RequireHousehold();
 
-        tasks.MapGet("", (TaskState? status, Guid? categoryId, Guid? assigneeId, TaskService service, CancellationToken ct) =>
-            service.ListAsync(status, categoryId, assigneeId, ct));
+        // status is bound as a string: minimal APIs parse query-string enums case-sensitively,
+        // and the API's enums are lower-case ("todo"), so we parse it ourselves.
+        tasks.MapGet("", async (string? status, Guid? categoryId, Guid? assigneeId, TaskService service, CancellationToken ct) =>
+        {
+            TaskState? state = null;
+            if (status is not null)
+            {
+                if (!Enum.TryParse<TaskState>(status, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["status"] = ["Status must be todo, doing or done."],
+                    });
+                }
+                state = parsed;
+            }
+
+            return Results.Ok(await service.ListAsync(state, categoryId, assigneeId, ct));
+        });
 
         tasks.MapGet("/{id:guid}", async (Guid id, TaskService service, CancellationToken ct) =>
             ToHttp(await service.GetAsync(id, ct)));
