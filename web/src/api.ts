@@ -45,6 +45,14 @@ export type Task = {
 
 export type Category = { id: string; name: string; sortOrder: number };
 
+export type ActivityEntry = {
+  id: string;
+  type: string;
+  actorId: string;
+  payload: Record<string, unknown>;
+  occurredAt: string;
+};
+
 export type TaskInput = {
   title: string;
   description?: string | null;
@@ -113,6 +121,8 @@ export const api = {
   categories: () => request<Category[]>('/api/tasks/categories'),
   createCategory: (name: string) =>
     request<Category>('/api/tasks/categories', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  activity: (limit: number) => request<ActivityEntry[]>(`/api/activity?limit=${limit}`),
 
   health: async (): Promise<Health> => (await fetch('/api/health')).json(),
 };

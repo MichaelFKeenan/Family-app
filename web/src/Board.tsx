@@ -105,6 +105,7 @@ function QuickAdd({ lookups }: { lookups: Lookups }) {
     onSuccess: () => {
       setTitle('');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activity'] });
     },
   });
 
@@ -184,7 +185,10 @@ function QuickAdd({ lookups }: { lookups: Lookups }) {
 function TaskCard({ task, lookups }: { task: Task; lookups: Lookups }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['tasks'] });
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['activity'] });
+  };
 
   // On a 409 someone else got there first; reload so the card shows the truth.
   const move = useMutation({
@@ -270,6 +274,7 @@ function EditTask({ task, lookups, onDone }: { task: Task; lookups: Lookups; onD
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activity'] });
       onDone();
     },
     onError: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),

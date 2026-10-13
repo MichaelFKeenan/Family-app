@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, signInHref } from './api';
+import { Activity } from './Activity';
 import { Board } from './Board';
 import { HouseholdPanel } from './HouseholdPanel';
 
@@ -43,6 +44,7 @@ export function App() {
       )}
 
       {me.data && hasHousehold && <Board />}
+      {me.data && hasHousehold && <Activity />}
       {me.data && <HouseholdPanel />}
 
       <p className="footer muted">

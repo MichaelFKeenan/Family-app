@@ -338,6 +338,30 @@ body {
   font-size: 0.85rem;
 }
 
+.activity {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.activity li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.activity li:last-child {
+  border-bottom: none;
+}
+
+.activity .when {
+  margin: 0;
+  white-space: nowrap;
+}
+
 .good {
   color: var(--good);
   font-weight: 600;

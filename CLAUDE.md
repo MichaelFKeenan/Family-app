@@ -31,7 +31,7 @@ https://claude.ai/code/artifact/d76d14ee-5270-4a19-b9ba-601eaaa58972
 
 ```
 src/Host/            the one deployable; wiring only, no business logic
-src/SharedKernel/    types every module may use (IModule, later domain events)
+src/SharedKernel/    types every module may use: IModule, cross-module contracts, event records, DbSession
 src/Modules/<Name>/  one project per module: Identity, Households, Tasks, Shopping, Points
 tests/Architecture.Tests/  module boundary rules
 tests/Integration.Tests/   real HTTP against a real Postgres (Testcontainers)
@@ -40,6 +40,8 @@ web/                 React app
 
 ## Rules
 
+- Write requests (POST, PUT, PATCH, DELETE under `/api`) each run in one Postgres transaction on a per-request connection shared by every module (`DbSession`, ADR-030). Module DbContexts derive from `ModuleDbContext` and are registered with `AddModuleDbContext<T>()`; never open your own transaction in a module. Before raw SQL or `ExecuteUpdate` in a write, call `db.JoinRequestTransaction()`.
+- Events: after a successful change, `DomainEvents.Raise(new SomethingHappened(...))`. Event records live in `SharedKernel/Events/Contracts.cs` and are a public contract: add fields, never rename or remove (the activity log keeps their JSON). React to another module's event with a `DomainEventHandler<TEvent>` registered as `IDomainEventHandler`. Handlers run before commit; if one throws, the whole request rolls back (ADR-031). Only write requests dispatch events; a GET must never raise one.
 - Modules never reference each other. `ModuleBoundaryTests` enforces this. To read another module's data, depend on a read-only interface in SharedKernel that the owning module implements (`IHouseholdMembership`, `IUserDirectory`). To react to another module's changes, use domain events (ADR-004, ADR-025).
 - Household-scoped endpoints call `.RequireHousehold()`, then read `CurrentHousehold.Id`. It resolves the `X-Household-Id` header, or the user's only household, and checks membership on every request (ADR-026). Module DbContexts for household-owned data apply a global query filter on `CurrentHousehold` (ADR-009).
 - Household-owned entities implement `IHouseholdOwned`; the module DbContext stamps `HouseholdId` on insert and refuses changes to other households' rows. Tables reference related household data by composite key `(household_id, id)`, so the database rejects cross-household links too (ADR-028). See `TasksDbContext` as the pattern.
