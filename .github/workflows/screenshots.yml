@@ -1,0 +1,55 @@
+name: UI screenshots
+
+# Renders the built React app against a mocked API and pushes the PNGs to the `screenshots`
+# branch, so the UI can be reviewed from places that can't run it (see web/screenshots/shoot.py).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/screenshots.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Build the app
+        working-directory: web
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm run build
+
+      - name: Install Playwright
+        run: |
+          pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Take screenshots
+        run: |
+          # The hash routes need no server-side fallback, so a static file server is enough.
+          python3 -m http.server 4173 --directory web/dist >/dev/null 2>&1 &
+          sleep 1
+          mkdir -p out
+          python3 web/screenshots/shoot.py http://localhost:4173 out
+
+      - name: Push to the screenshots branch
+        run: |
+          cd out
+          git init -q -b screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -qm "Screenshots of ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" screenshots
