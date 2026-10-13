@@ -19,6 +19,9 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - Phase 1, step 5: domain events. Every write request is one transaction shared by all modules; events raised during it are logged to `platform.activity_events` and dispatched to handlers before commit. Default categories come from a `HouseholdCreated` handler. Recent-activity feed (ADR-030, ADR-031).
 - Phase 1, step 6: Points. Append-only `points.ledger` fed only by task events: completion pays the assignee (or completer), reopen and delete reverse whatever each person holds for that task. Leaderboard for this week, this month and all time; history endpoint; one-off backfill from the activity log (ADR-032, ADR-033).
 - Phase 1, step 7: Shopping list. Add (once per name, case-insensitive), tick and untick (idempotent), remove mistakes, recently ticked with undo; ticked items stay as history. Shopping tab at `/#shopping` (ADR-010, ADR-035).
+- Phase 1, step 8: Polish. Phone layout, load errors with "Try again", offline banner, expired sessions go back to sign-in. Nightly database backups to the server, 14 days kept, reported on every deploy (ADR-036).
+- Personal boards ("Mine" tab): private to each member, no points, open tasks move between boards (ADR-037).
+- CI screenshots the UI against mock data and pushes them to the `screenshots` branch, so the UI can be checked without running it.
 - Hosting moved to Hetzner (ADR-034): `infra/` holds the server's first-boot config, Docker Compose file and Caddy config; CI pushes images to GitHub's registry and deploys over SSH.
 
 **Open questions**
@@ -27,8 +30,9 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 **Next**
 
-- Owner: confirm on the live site: sign-in, household, invite, board, activity feed, leaderboard, shopping list.
-- Phase 1, step 8: Polish. Mobile layout, error states, Neon backups/restore check. Then phase 1 is done.
+- Owner: confirm on the live site: sign-in, household, invite, family and personal boards, activity feed, leaderboard, shopping list.
+- Restore drill: restore a nightly backup into a Neon branch or local Postgres and check it (see Deploy). Then phase 1 is done.
+- Phase 2, chosen by the owner: likely SignalR for the shopping list (ADR-018).
 
 **Follow-ups**
 
@@ -97,5 +101,14 @@ Every green push to `main` builds an image, pushes it to `ghcr.io/michaelfkeenan
    - `DOMAIN`: e.g. `family.example.com`
    - `NEON_CONNECTION_STRING`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 6. Re-run the latest CI run. Caddy fetches the HTTPS certificate on first start.
+
+**Backups** (ADR-036): `/opt/family-app/backups/family-YYYY-MM-DD.dump`, one a night, 14 kept; each deploy shows the newest on the run page. To restore one into a database (a new Neon branch is safest):
+
+```
+ssh deploy@<server>
+cd /opt/family-app
+docker compose run --rm backup pg_restore --dbname='<postgres:// URL of the target>' \
+  --clean --if-exists --no-owner /backups/family-YYYY-MM-DD.dump
+```
 
 Without the deploy secrets the deploy job skips itself and CI stays green. To rotate the deploy key: new key pair, new public key in `cloud-init.yaml` and in `/home/deploy/.ssh/authorized_keys` on the server, new `DEPLOY_SSH_KEY` secret.
