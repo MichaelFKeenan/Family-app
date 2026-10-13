@@ -52,6 +52,7 @@ public class EventTests(FamilyAppFactory factory) : IClassFixture<FamilyAppFacto
 
         var activity = await ActivityAsync(admin.Client);
         var forTask = activity
+            .Where(a => a.Type.StartsWith("Task", StringComparison.Ordinal))
             .Where(a => a.Payload.TryGetProperty("taskId", out var id) && id.GetGuid() == task.Id)
             .Reverse()
             .ToList();
