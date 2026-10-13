@@ -1,4 +1,5 @@
 using FamilyApp.SharedKernel;
+using FamilyApp.SharedKernel.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyApp.Modules.Tasks.Data;
@@ -9,8 +10,8 @@ namespace FamilyApp.Modules.Tasks.Data;
 /// so household isolation doesn't depend on each query remembering a WHERE clause.
 /// If no household was resolved for the request, any query throws: it fails closed.
 /// </summary>
-public sealed class TasksDbContext(DbContextOptions<TasksDbContext> options, CurrentHousehold currentHousehold)
-    : DbContext(options)
+public sealed class TasksDbContext(DbContextOptions<TasksDbContext> options, DbSession session, CurrentHousehold currentHousehold)
+    : ModuleDbContext(options, session)
 {
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<Category> Categories => Set<Category>();

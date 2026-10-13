@@ -5,35 +5,13 @@ using Npgsql;
 
 namespace FamilyApp.Modules.Tasks;
 
-public sealed class CategoryService(TasksDbContext db, CurrentHousehold household, TimeProvider clock)
+public sealed class CategoryService(TasksDbContext db, TimeProvider clock)
 {
     public const int MaxName = 50;
 
-    private static readonly string[] Defaults = ["Short term", "Long term", "House"];
-
-    public async Task<IReadOnlyList<CategoryDto>> ListAsync(CancellationToken cancellationToken)
-    {
-        var categories = await LoadAsync(cancellationToken);
-        if (categories.Count > 0) return categories;
-
-        // A new household starts with the default categories, created on first use.
-        // ON CONFLICT DO NOTHING makes two simultaneous first visits safe: the unique
-        // (household_id, name) constraint lets only one insert of each name succeed.
-        // From step 5 this moves to a HouseholdCreated event handler (ADR-004).
-        var now = clock.GetUtcNow();
-        for (var i = 0; i < Defaults.Length; i++)
-        {
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"""
-                INSERT INTO tasks.categories (id, household_id, name, sort_order, created_at)
-                VALUES ({Guid.CreateVersion7()}, {household.Id}, {Defaults[i]}, {i}, {now})
-                ON CONFLICT (household_id, name) DO NOTHING
-                """,
-                cancellationToken);
-        }
-
-        return await LoadAsync(cancellationToken);
-    }
+    // Defaults are created when the household is (SeedDefaultCategories, ADR-031), so listing has no side effects.
+    public async Task<IReadOnlyList<CategoryDto>> ListAsync(CancellationToken cancellationToken) =>
+        await LoadAsync(cancellationToken);
 
     public async Task<Outcome<CategoryDto>> CreateAsync(CategoryRequest request, CancellationToken cancellationToken)
     {

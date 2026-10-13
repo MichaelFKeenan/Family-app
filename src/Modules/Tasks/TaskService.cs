@@ -1,18 +1,20 @@
 using FamilyApp.Modules.Tasks.Data;
 using FamilyApp.SharedKernel;
+using FamilyApp.SharedKernel.Events;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyApp.Modules.Tasks;
 
 /// <summary>
 /// Task use cases. Each state change is its own operation (start, complete, reopen, assign) rather
-/// than a generic "set status", so each can enforce its own rule and, from step 5, raise exactly
-/// one domain event such as TaskCompleted (ADR-004).
+/// than a generic "set status", so each enforces its own rule and raises exactly one event (ADR-004).
+/// Events are only queued here; the host dispatches them before the request commits (ADR-031).
 /// </summary>
 public sealed class TaskService(
     TasksDbContext db,
     CurrentHousehold household,
     IHouseholdMembership membership,
+    DomainEvents events,
     TimeProvider clock)
 {
     public const int MaxTitle = 200;
@@ -72,10 +74,12 @@ public sealed class TaskService(
 
         db.Tasks.Add(task);
         await db.SaveChangesAsync(cancellationToken);
+
+        events.Raise(new TaskCreated(task.HouseholdId, userId, task.Id, task.Title, task.Points, task.AssigneeId));
         return new Outcome<TaskDto>.Ok(TaskDto.From(task));
     }
 
-    public async Task<Outcome<TaskDto>> UpdateAsync(Guid id, UpdateTaskRequest request, CancellationToken cancellationToken)
+    public async Task<Outcome<TaskDto>> UpdateAsync(Guid id, UpdateTaskRequest request, Guid userId, CancellationToken cancellationToken)
     {
         var problem = ValidateFields(request.Title, request.Description, request.Points)
             ?? await ValidateCategoryAsync(request.CategoryId, cancellationToken);
@@ -90,10 +94,10 @@ public sealed class TaskService(
             task.CategoryId = request.CategoryId;
             task.DueOn = request.DueOn;
             return null;
-        }, cancellationToken);
+        }, task => new TaskEdited(task.HouseholdId, userId, task.Id, task.Title, task.Points), cancellationToken);
     }
 
-    public async Task<Outcome<TaskDto>> AssignAsync(Guid id, Guid? assigneeId, CancellationToken cancellationToken)
+    public async Task<Outcome<TaskDto>> AssignAsync(Guid id, Guid? assigneeId, Guid userId, CancellationToken cancellationToken)
     {
         var problem = await ValidateAssigneeAsync(assigneeId, cancellationToken);
         if (problem is not null) return problem;
@@ -102,51 +106,73 @@ public sealed class TaskService(
         {
             task.AssigneeId = assigneeId;
             return null;
-        }, cancellationToken);
+        }, task => new TaskAssigned(task.HouseholdId, userId, task.Id, task.Title, task.AssigneeId), cancellationToken);
     }
 
-    public Task<Outcome<TaskDto>> StartAsync(Guid id, CancellationToken cancellationToken) =>
+    public Task<Outcome<TaskDto>> StartAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
         ChangeAsync(id, expectedVersion: null, task =>
         {
             if (task.Status != TaskState.Todo) return $"Only a to-do task can be started; this one is {Describe(task.Status)}.";
             task.Status = TaskState.Doing;
             return null;
-        }, cancellationToken);
+        }, task => new TaskStarted(task.HouseholdId, userId, task.Id, task.Title), cancellationToken);
 
     public Task<Outcome<TaskDto>> CompleteAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
         ChangeAsync(id, expectedVersion: null, task =>
         {
-            // Refusing a second completion matters: from step 6, completing awards points (ADR-006, ADR-016).
+            // Refusing a second completion matters: completion awards points (ADR-006, ADR-016).
             if (task.Status == TaskState.Done) return "This task is already done.";
             task.Status = TaskState.Done;
             task.CompletedAt = clock.GetUtcNow();
             task.CompletedBy = userId;
             return null;
-        }, cancellationToken);
+        }, task => new TaskCompleted(task.HouseholdId, userId, task.Id, task.Title, task.Points, task.AssigneeId), cancellationToken);
 
-    public Task<Outcome<TaskDto>> ReopenAsync(Guid id, CancellationToken cancellationToken) =>
-        ChangeAsync(id, expectedVersion: null, task =>
+    public async Task<Outcome<TaskDto>> ReopenAsync(Guid id, Guid userId, CancellationToken cancellationToken)
+    {
+        var wasDone = false;
+        return await ChangeAsync(id, expectedVersion: null, task =>
         {
             if (task.Status == TaskState.Todo) return "This task is already to do.";
+            wasDone = task.Status == TaskState.Done;
             task.Status = TaskState.Todo;
             task.CompletedAt = null;
             task.CompletedBy = null;
             return null;
-        }, cancellationToken);
+        }, task => new TaskReopened(task.HouseholdId, userId, task.Id, task.Title, wasDone), cancellationToken);
+    }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<bool> DeleteAsync(Guid id, Guid userId, CancellationToken cancellationToken)
     {
-        var deleted = await db.Tasks.Where(t => t.Id == id).ExecuteDeleteAsync(cancellationToken);
-        return deleted > 0;
+        // Loaded rather than deleted in bulk, because the event needs to say what was deleted.
+        var task = await db.Tasks.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (task is null) return false;
+
+        db.Tasks.Remove(task);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false; // Someone else changed or deleted it first.
+        }
+
+        events.Raise(new TaskDeleted(task.HouseholdId, userId, task.Id, task.Title, task.Status == TaskState.Done));
+        return true;
     }
 
     /// <summary>
-    /// Load, apply a change, save with the version check. <paramref name="expectedVersion"/> is the
-    /// version the client saw (edits); for commands it is null and the loaded version is used, which
+    /// Load, apply a change, save with the version check, then queue the event. <paramref name="expectedVersion"/>
+    /// is the version the client saw (edits); for commands it is null and the loaded version is used, which
     /// still makes two simultaneous commands on one task conflict instead of both succeeding.
     /// </summary>
     private async Task<Outcome<TaskDto>> ChangeAsync(
-        Guid id, int? expectedVersion, Func<TaskItem, string?> change, CancellationToken cancellationToken)
+        Guid id,
+        int? expectedVersion,
+        Func<TaskItem, string?> change,
+        Func<TaskItem, IDomainEvent> happened,
+        CancellationToken cancellationToken)
     {
         var task = await db.Tasks.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
         if (task is null) return new Outcome<TaskDto>.NotFound();
@@ -173,6 +199,7 @@ public sealed class TaskService(
             return StaleConflict();
         }
 
+        events.Raise(happened(task));
         return new Outcome<TaskDto>.Ok(TaskDto.From(task));
     }
 

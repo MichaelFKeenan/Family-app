@@ -1,3 +1,4 @@
+using FamilyApp.SharedKernel.Events;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
@@ -41,6 +42,8 @@ public sealed class FamilyAppFactory : WebApplicationFactory<Program>, IAsyncLif
             services.PostConfigure<CookieAuthenticationOptions>(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 options => options.ForwardAuthenticate = TestAuthHandler.SchemeName);
+
+            services.AddScoped<IDomainEventHandler, FailingHandler>();
         });
     }
 }

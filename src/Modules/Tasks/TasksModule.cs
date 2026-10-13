@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using FamilyApp.Modules.Tasks.Data;
 using FamilyApp.SharedKernel;
+using FamilyApp.SharedKernel.Events;
+using FamilyApp.SharedKernel.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -18,10 +20,10 @@ public sealed class TasksModule : IModule
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<TasksDbContext>((sp, options) =>
-            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
+        services.AddModuleDbContext<TasksDbContext>();
         services.AddScoped<TaskService>();
         services.AddScoped<CategoryService>();
+        services.AddScoped<IDomainEventHandler, SeedDefaultCategories>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder group)
@@ -61,14 +63,23 @@ public sealed class TasksModule : IModule
                 : ToHttp(outcome);
         });
 
-        tasks.MapPut("/{id:guid}", async (Guid id, UpdateTaskRequest request, TaskService service, CancellationToken ct) =>
-            ToHttp(await service.UpdateAsync(id, request, ct)));
+        tasks.MapPut("/{id:guid}", async (Guid id, UpdateTaskRequest request, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return ToHttp(await service.UpdateAsync(id, request, userId, ct));
+        });
 
-        tasks.MapPost("/{id:guid}/assign", async (Guid id, AssignTaskRequest request, TaskService service, CancellationToken ct) =>
-            ToHttp(await service.AssignAsync(id, request.AssigneeId, ct)));
+        tasks.MapPost("/{id:guid}/assign", async (Guid id, AssignTaskRequest request, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return ToHttp(await service.AssignAsync(id, request.AssigneeId, userId, ct));
+        });
 
-        tasks.MapPost("/{id:guid}/start", async (Guid id, TaskService service, CancellationToken ct) =>
-            ToHttp(await service.StartAsync(id, ct)));
+        tasks.MapPost("/{id:guid}/start", async (Guid id, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return ToHttp(await service.StartAsync(id, userId, ct));
+        });
 
         tasks.MapPost("/{id:guid}/complete", async (Guid id, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
         {
@@ -76,11 +87,17 @@ public sealed class TasksModule : IModule
             return ToHttp(await service.CompleteAsync(id, userId, ct));
         });
 
-        tasks.MapPost("/{id:guid}/reopen", async (Guid id, TaskService service, CancellationToken ct) =>
-            ToHttp(await service.ReopenAsync(id, ct)));
+        tasks.MapPost("/{id:guid}/reopen", async (Guid id, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return ToHttp(await service.ReopenAsync(id, userId, ct));
+        });
 
-        tasks.MapDelete("/{id:guid}", async (Guid id, TaskService service, CancellationToken ct) =>
-            await service.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
+        tasks.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, TaskService service, CancellationToken ct) =>
+        {
+            user.TryGetUserId(out var userId);
+            return await service.DeleteAsync(id, userId, ct) ? Results.NoContent() : Results.NotFound();
+        });
 
         // Categories live under the tasks module because only tasks use them.
         var categories = tasks.MapGroup("/categories");

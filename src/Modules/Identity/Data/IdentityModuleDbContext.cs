@@ -1,3 +1,4 @@
+using FamilyApp.SharedKernel.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyApp.Modules.Identity.Data;
@@ -6,7 +7,8 @@ namespace FamilyApp.Modules.Identity.Data;
 /// EF Core is used for queries and changes only. The schema itself comes from the SQL scripts
 /// in <c>Migrations/</c> (ADR-021), so this mapping must match them; integration tests check it.
 /// </summary>
-public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbContext> options) : DbContext(options)
+public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbContext> options, DbSession session)
+    : ModuleDbContext(options, session)
 {
     public DbSet<User> Users => Set<User>();
 

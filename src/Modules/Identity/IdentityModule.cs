@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FamilyApp.Modules.Identity.Data;
 using FamilyApp.SharedKernel;
+using FamilyApp.SharedKernel.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -32,8 +33,7 @@ public sealed class IdentityModule : IModule
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<IdentityModuleDbContext>((sp, options) =>
-            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
+        services.AddModuleDbContext<IdentityModuleDbContext>();
         services.AddScoped<IdentityService>();
         services.AddScoped<IUserDirectory, UserDirectory>();
 

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FamilyApp.Modules.Households.Data;
 using FamilyApp.SharedKernel;
+using FamilyApp.SharedKernel.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -20,8 +21,7 @@ public sealed class HouseholdsModule : IModule
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<HouseholdsDbContext>((sp, options) =>
-            options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
+        services.AddModuleDbContext<HouseholdsDbContext>();
         services.AddScoped<HouseholdService>();
         services.AddScoped<IHouseholdMembership, HouseholdMembership>();
     }

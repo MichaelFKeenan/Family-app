@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
 using FamilyApp.Modules.Households.Data;
 using FamilyApp.SharedKernel;
+using FamilyApp.SharedKernel.Events;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyApp.Modules.Households;
@@ -11,7 +11,6 @@ public sealed record HouseholdMember(Guid UserId, string DisplayName, string? Av
 
 public sealed record CreatedInvite(string Code, DateTimeOffset ExpiresAt);
 
-[JsonConverter(typeof(JsonStringEnumConverter<InviteOutcome>))]
 public enum InviteOutcome
 {
     Joined,
@@ -21,7 +20,7 @@ public enum InviteOutcome
 
 public sealed record AcceptInviteResult(InviteOutcome Outcome, Guid? HouseholdId);
 
-public sealed class HouseholdService(HouseholdsDbContext db, IUserDirectory users, TimeProvider clock)
+public sealed class HouseholdService(HouseholdsDbContext db, IUserDirectory users, DomainEvents events, TimeProvider clock)
 {
     public static readonly TimeSpan InviteLifetime = TimeSpan.FromDays(7);
 
@@ -46,6 +45,9 @@ public sealed class HouseholdService(HouseholdsDbContext db, IUserDirectory user
         });
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Tasks reacts by creating the default categories (ADR-031); the activity log records it.
+        events.Raise(new HouseholdCreated(household.Id, userId, household.Name));
         return new HouseholdSummary(household.Id, household.Name, Membership.Admin);
     }
 
@@ -127,7 +129,8 @@ public sealed class HouseholdService(HouseholdsDbContext db, IUserDirectory user
             return new AcceptInviteResult(InviteOutcome.AlreadyMember, invite.HouseholdId);
         }
 
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // Runs inside the request transaction (ADR-030): the claim and the membership commit together.
+        db.JoinRequestTransaction();
 
         // Claim the invite atomically. If two people open the same link at once, both pass the
         // check above, but only one UPDATE can match "used_at IS NULL"; the other changes 0 rows.
@@ -153,8 +156,8 @@ public sealed class HouseholdService(HouseholdsDbContext db, IUserDirectory user
         });
 
         await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
 
+        events.Raise(new MemberJoined(invite.HouseholdId, userId, Membership.Member));
         return new AcceptInviteResult(InviteOutcome.Joined, invite.HouseholdId);
     }
 }

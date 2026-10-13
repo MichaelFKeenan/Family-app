@@ -3,4 +3,8 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- For the shared DbSession and ModuleDbContext base (ADR-030). -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
 </Project>

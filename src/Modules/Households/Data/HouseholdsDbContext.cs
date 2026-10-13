@@ -1,3 +1,4 @@
+using FamilyApp.SharedKernel.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyApp.Modules.Households.Data;
@@ -9,7 +10,8 @@ namespace FamilyApp.Modules.Households.Data;
 /// module that decides which households a user belongs to, so its queries are by user or by an
 /// explicit household id. Tasks, Shopping and Points will filter on <c>CurrentHousehold</c>.
 /// </summary>
-public sealed class HouseholdsDbContext(DbContextOptions<HouseholdsDbContext> options) : DbContext(options)
+public sealed class HouseholdsDbContext(DbContextOptions<HouseholdsDbContext> options, DbSession session)
+    : ModuleDbContext(options, session)
 {
     public DbSet<Household> Households => Set<Household>();
     public DbSet<Membership> Memberships => Set<Membership>();

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FamilyApp.Host.Database;
+using FamilyApp.Host.Events;
 using FamilyApp.Host.Health;
 using FamilyApp.Host.Security;
 using FamilyApp.Modules.Households;
@@ -9,6 +10,8 @@ using FamilyApp.Modules.Points;
 using FamilyApp.Modules.Shopping;
 using FamilyApp.Modules.Tasks;
 using FamilyApp.SharedKernel;
+using FamilyApp.SharedKernel.Events;
+using FamilyApp.SharedKernel.Persistence;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -49,6 +52,13 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 // Set per request by .RequireHousehold(); read by modules to scope their queries (ADR-009, ADR-026).
 builder.Services.AddScoped<CurrentHousehold>();
+
+// One connection per request, shared by every module's DbContext; write requests run in one
+// transaction on it (ADR-030). Events raised during the request are dispatched before commit (ADR-031).
+builder.Services.AddScoped<DbSession>();
+builder.Services.AddScoped<DomainEvents>();
+builder.Services.AddScoped<DomainEventDispatcher>();
+builder.Services.AddScoped<ActivityLog>();
 
 builder.Services.AddSingleton<MigrationRunner>();
 foreach (var source in migrationSources)
@@ -100,7 +110,8 @@ app.MapHealthChecks("/api/health", new HealthCheckOptions
     ResponseWriter = HealthResponseWriter.WriteJson,
 });
 
-var api = app.MapGroup("/api");
+var api = app.MapGroup("/api").UseWriteTransactions();
+api.MapActivity();
 foreach (var module in modules)
 {
     module.MapEndpoints(api.MapGroup($"/{module.Name}"));
