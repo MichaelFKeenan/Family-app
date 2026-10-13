@@ -20,6 +20,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - Phase 1, step 6: Points. Append-only `points.ledger` fed only by task events: completion pays the assignee (or completer), reopen and delete reverse whatever each person holds for that task. Leaderboard for this week, this month and all time; history endpoint; one-off backfill from the activity log (ADR-032, ADR-033).
 - Phase 1, step 7: Shopping list. Add (once per name, case-insensitive), tick and untick (idempotent), remove mistakes, recently ticked with undo; ticked items stay as history. Shopping tab at `/#shopping` (ADR-010, ADR-035).
 - Phase 1, step 8: Polish. Phone layout, load errors with "Try again", offline banner, expired sessions go back to sign-in. Nightly database backups to the server, 14 days kept, reported on every deploy (ADR-036).
+- Shopping ticks record why: bought (the tick) or not needed (under More), so purchase history only counts real purchases (ADR-038).
 - Personal boards ("Mine" tab): private to each member, no points, open tasks move between boards (ADR-037).
 - CI screenshots the UI against mock data and pushes them to the `screenshots` branch, so the UI can be checked without running it.
 - Hosting moved to Hetzner (ADR-034): `infra/` holds the server's first-boot config, Docker Compose file and Caddy config; CI pushes images to GitHub's registry and deploys over SSH.
