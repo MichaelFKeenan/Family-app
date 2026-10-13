@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FamilyApp.Host.Database;
 using FamilyApp.Host.Health;
 using FamilyApp.Host.Security;
@@ -40,6 +42,10 @@ builder.Services.AddSingleton(sp =>
 });
 
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Enums travel as lower-case strings ("todo", "high"), matching the database and readable in the API.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 
 // Set per request by .RequireHousehold(); read by modules to scope their queries (ADR-009, ADR-026).
 builder.Services.AddScoped<CurrentHousehold>();
