@@ -36,9 +36,9 @@ export function HouseholdPanel() {
     ? 'Joining household…'
     : accept.isError
       ? `Couldn't use that invite: ${accept.error.message}`
-      : accept.data?.outcome === 'Joined'
+      : accept.data?.outcome === 'joined'
         ? 'You joined the household.'
-        : accept.data?.outcome === 'AlreadyMember'
+        : accept.data?.outcome === 'alreadyMember'
           ? "You're already in that household."
           : null;
 

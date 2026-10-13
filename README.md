@@ -15,11 +15,12 @@ _Last updated: 12 Oct 2026. Update this section in the same commit that finishes
 - Phase 1, step 1: walking skeleton. Modular .NET host with five empty modules, health endpoints, React status page, CI, automatic deploy.
 - Phase 1, step 2: Identity. Google sign-in, users and login identities, 30-day cookie session, `GET /api/identity/me`. Plain SQL migrations run by Fly's release command. Cookie-encryption keys stored in Postgres.
 - Phase 1, step 3: Households. Create a household, single-use hashed invite links, members list, `.RequireHousehold()` resolving the current household per request, isolation tests.
+- Phase 1, step 4: Tasks. Board (to do, doing, done) with priority, points, category, assignee and due date; start, complete, reopen, edit, delete; categories with defaults. Household isolation by EF global query filter plus a composite foreign key; optimistic concurrency on a `version` column (ADR-028, ADR-029).
 
 **Next**
 
-- Confirm on the live site: Google sign-in, creating the household, and inviting a second family member end to end.
-- Phase 1, step 4: Tasks. Board with categories, priorities, points, assignee; first module to filter every query by `CurrentHousehold` via an EF Core global query filter; optimistic concurrency (ADR-011, ADR-014).
+- Confirm on the live site: sign-in, household, invite, and using the board.
+- Phase 1, step 5: domain events and the activity log. Dispatcher running handlers in the same transaction, `activity_events` table, `TaskCompleted` and `HouseholdCreated`; move default categories to a `HouseholdCreated` handler (ADR-004, ADR-005).
 
 **Follow-ups**
 
@@ -33,6 +34,7 @@ _Last updated: 12 Oct 2026. Update this section in the same commit that finishes
 - Children don't sign in yet: v1 is Google sign-in for adults only. Child support is deferred, likely as a parent-managed login.
 - Hosting stays on a container, not serverless, because SignalR needs long-lived connections (ADR-018).
 - Modules stay strictly separated (confirmed 12 Oct 2026, ADR-001). Cross-module reads use SharedKernel interfaces; changes will use events (ADR-025).
+- Default categories are created the first time a household opens its categories. Until step 5, deleting all categories brings the defaults back (ADR-029).
 - Who may sign in is controlled by Google, not our code: the OAuth consent screen stays in Testing mode, and only its listed test users can sign in (ADR-024). To add a family member, add their Google email there.
 
 ## Run it locally

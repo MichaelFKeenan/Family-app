@@ -22,6 +22,39 @@ export type Invite = { code: string; expiresAt: string };
 
 export type Health = { status: string; checks: Record<string, string> };
 
+export type TaskStatus = 'todo' | 'doing' | 'done';
+export type Priority = 'low' | 'medium' | 'high' | 'urgent';
+
+export type Task = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: Priority;
+  points: number;
+  categoryId: string | null;
+  assigneeId: string | null;
+  dueOn: string | null; // yyyy-mm-dd
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  completedBy: string | null;
+  version: number;
+};
+
+export type Category = { id: string; name: string; sortOrder: number };
+
+export type TaskInput = {
+  title: string;
+  description?: string | null;
+  priority?: Priority;
+  points?: number;
+  categoryId?: string | null;
+  assigneeId?: string | null;
+  dueOn?: string | null;
+};
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -62,10 +95,24 @@ export const api = {
   members: () => request<Member[]>('/api/households/members'),
   createInvite: () => request<Invite>('/api/households/invites', { method: 'POST' }),
   acceptInvite: (code: string) =>
-    request<{ outcome: 'Joined' | 'AlreadyMember'; householdId: string }>(
+    request<{ outcome: 'joined' | 'alreadyMember'; householdId: string }>(
       `/api/households/invites/${encodeURIComponent(code)}/accept`,
       { method: 'POST' },
     ),
+
+  tasks: () => request<Task[]>('/api/tasks'),
+  createTask: (input: TaskInput) => request<Task>('/api/tasks', { method: 'POST', body: JSON.stringify(input) }),
+  // A full edit; version is the one the form was opened with, so a stale save gets a 409 (ADR-014).
+  updateTask: (id: string, input: Omit<TaskInput, 'assigneeId'> & { version: number }) =>
+    request<Task>(`/api/tasks/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
+  assignTask: (id: string, assigneeId: string | null) =>
+    request<Task>(`/api/tasks/${id}/assign`, { method: 'POST', body: JSON.stringify({ assigneeId }) }),
+  moveTask: (id: string, action: 'start' | 'complete' | 'reopen') =>
+    request<Task>(`/api/tasks/${id}/${action}`, { method: 'POST' }),
+  deleteTask: (id: string) => request<void>(`/api/tasks/${id}`, { method: 'DELETE' }),
+  categories: () => request<Category[]>('/api/tasks/categories'),
+  createCategory: (name: string) =>
+    request<Category>('/api/tasks/categories', { method: 'POST', body: JSON.stringify({ name }) }),
 
   health: async (): Promise<Health> => (await fetch('/api/health')).json(),
 };
