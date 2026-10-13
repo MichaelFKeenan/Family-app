@@ -152,6 +152,7 @@ jobs:
             echo "IMAGE_TAG=${{ github.sha }}"
             echo "DOMAIN=$DOMAIN"
             echo "ConnectionStrings__Postgres='$NEON_CONNECTION_STRING'"
+            echo "BACKUP_DATABASE_URL='$(python3 .github/backup_url.py)'"
             if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
               echo "Authentication__Google__ClientId='$GOOGLE_CLIENT_ID'"
               echo "Authentication__Google__ClientSecret='$GOOGLE_CLIENT_SECRET'"
@@ -164,7 +165,7 @@ jobs:
       - name: Copy configuration to the server
         if: steps.ready.outputs.ok == 'true'
         run: |
-          scp -q infra/compose.yml infra/Caddyfile server:/opt/family-app/
+          scp -q infra/compose.yml infra/Caddyfile infra/backup.sh server:/opt/family-app/
           scp -q production.env server:/opt/family-app/.env
           ssh server 'chmod 600 /opt/family-app/.env'
 
@@ -193,3 +194,20 @@ jobs:
           echo "::error::https://$DOMAIN/api/health did not report healthy"
           ssh server 'cd /opt/family-app && docker compose ps && docker compose logs --tail 40 app caddy' || true
           exit 1
+
+      # Shows the newest nightly backup on the run page, so a backup that stopped working is noticed (ADR-036).
+      - name: Report latest backup
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          latest=$(ssh server 'cd /opt/family-app/backups 2>/dev/null && ls -t family-*.dump 2>/dev/null | head -1')
+          if [ -z "$latest" ]; then
+            echo "::notice title=Backup::No backup yet; the first runs after 02:00 UTC."
+          else
+            size=$(ssh server "du -h /opt/family-app/backups/$latest | cut -f1")
+            echo "::notice title=Backup::Latest: $latest ($size)"
+            today=$(date -u +%F); yesterday=$(date -u -d yesterday +%F)
+            case "$latest" in
+              *"$today"*|*"$yesterday"*) ;;
+              *) echo "::warning title=Backup::The newest backup is $latest; nightly backups may be failing. Check: docker compose logs backup" ;;
+            esac
+          fi

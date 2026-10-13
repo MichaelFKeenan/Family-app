@@ -32,6 +32,20 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  # Nightly pg_dump of Neon to ./backups on this server, 14 days kept (ADR-036). pg_dump 18 can
+  # dump older servers; its version must be at least the server's.
+  backup:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      # Only this one setting, not the whole .env: the backup needs nothing else.
+      DATABASE_URL: ${BACKUP_DATABASE_URL}
+      KEEP_DAYS: "14"
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ./backups:/backups
+
 volumes:
   caddy_data:
   caddy_config:

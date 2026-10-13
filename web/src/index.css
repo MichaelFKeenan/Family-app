@@ -213,6 +213,10 @@ body {
     min-width: 0;
   }
 
+  .signed-in .link {
+    white-space: nowrap;
+  }
+
   .signed-in .name {
     overflow: hidden;
     text-overflow: ellipsis;
