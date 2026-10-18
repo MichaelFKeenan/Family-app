@@ -71,6 +71,25 @@ public sealed class McpTestServer : IAsyncDisposable
     }
 }
 
+/// <summary>
+/// One server for all the tool tests: starting the process takes seconds. Tests in the collection run
+/// one at a time, and each starts by resetting the fake API.
+/// </summary>
+public sealed class McpServerFixture : IAsyncLifetime
+{
+    public McpTestServer Server { get; private set; } = null!;
+
+    public async Task InitializeAsync() => Server = await McpTestServer.StartAsync();
+
+    async Task IAsyncLifetime.DisposeAsync() => await Server.DisposeAsync();
+}
+
+[CollectionDefinition(Name)]
+public sealed class McpServerCollection : ICollectionFixture<McpServerFixture>
+{
+    public const string Name = "MCP server";
+}
+
 /// <summary>A stand-in for the Family Board API: canned answers by "METHOD /path", and a record of every request.</summary>
 public sealed class FakeApi : IAsyncDisposable
 {
@@ -82,6 +101,16 @@ public sealed class FakeApi : IAsyncDisposable
     public List<(string Route, string? Body, string? Authorization)> Requests { get; } = [];
 
     public void Answer(string route, string json, HttpStatusCode status = HttpStatusCode.OK) => _answers[route] = (status, json);
+
+    /// <summary>Forget every answer and request, so tests sharing one server don't see each other's.</summary>
+    public void Reset()
+    {
+        _answers.Clear();
+        lock (Requests)
+        {
+            Requests.Clear();
+        }
+    }
 
     public static async Task<FakeApi> StartAsync()
     {
