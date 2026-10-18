@@ -180,6 +180,9 @@ jobs:
             docker compose pull --quiet app
             docker compose run --rm --no-deps app dotnet FamilyApp.Host.dll migrate
             docker compose up -d --remove-orphans
+            # up -d leaves Caddy running when only its mounted Caddyfile changed, so make it re-read the
+            # file. A reload is graceful: open connections and certificates are kept.
+            docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
             docker logout ghcr.io
             docker image prune -f"
 
