@@ -22,6 +22,17 @@ export type Invite = { code: string; expiresAt: string };
 
 export type Health = { status: string; checks: Record<string, string> };
 
+// Personal access tokens for agents (ADR-039). The token itself only ever arrives in CreatedAccessToken.
+export type AccessToken = {
+  id: string;
+  name: string;
+  createdAt: string;
+  expiresAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+};
+export type CreatedAccessToken = { id: string; name: string; token: string; expiresAt: string };
+
 export type TaskStatus = 'todo' | 'doing' | 'done';
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -112,6 +123,11 @@ export const api = {
     }
   },
   signOut: () => request<void>('/api/identity/logout', { method: 'POST' }),
+
+  accessTokens: () => request<AccessToken[]>('/api/identity/tokens'),
+  createAccessToken: (name: string) =>
+    request<CreatedAccessToken>('/api/identity/tokens', { method: 'POST', body: JSON.stringify({ name }) }),
+  revokeAccessToken: (id: string) => request<void>(`/api/identity/tokens/${id}/revoke`, { method: 'POST' }),
 
   households: () => request<Household[]>('/api/households'),
   createHousehold: (name: string) =>

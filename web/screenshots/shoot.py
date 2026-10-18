@@ -77,6 +77,7 @@ SCENARIOS = {
     "shopping-errors": ("#shopping", {"/api/shopping": 500, "/api/shopping/checked": 500}),
     "shopping-offline": ("#shopping", {}),
     "shopping-menu": ("#shopping", {}),
+    "board-tokens": ("#board", {}),
 }
 
 DEFAULTS = {
@@ -84,6 +85,10 @@ DEFAULTS = {
     "/api/tasks": tasks, "/api/tasks/categories": categories, "/api/households/members": members,
     "/api/shopping": items, "/api/shopping/checked": checked, "/api/activity": activity,
     "/api/points/leaderboard": [{"userId": SAM, "points": 45}, {"userId": ALEX, "points": 20}], "/api/health": health,
+    "/api/identity/tokens": [
+        {"id": "t1", "name": "laptop Claude Code", "createdAt": iso(20000), "expiresAt": iso(-100000), "lastUsedAt": iso(10), "revokedAt": None},
+        {"id": "t2", "name": "old experiment", "createdAt": iso(90000), "expiresAt": iso(-40000), "lastUsedAt": None, "revokedAt": iso(60000)},
+    ],
 }
 
 
@@ -117,6 +122,9 @@ with sync_playwright() as p:
             if name.endswith("-menu"):
                 page.get_by_label("More for Bread").click()
                 page.wait_for_timeout(300)
+            if name.endswith("-tokens"):
+                page.get_by_text("Agent tokens").click()
+                page.wait_for_timeout(500)
             if name.endswith("-offline"):
                 page.context.set_offline(True)
                 page.wait_for_timeout(500)

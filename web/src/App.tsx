@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, signInHref } from './api';
 import { Activity } from './Activity';
+import { AgentTokens } from './AgentTokens';
 import { Board } from './Board';
 import { HouseholdPanel } from './HouseholdPanel';
 import { Leaderboard } from './Leaderboard';
@@ -74,6 +75,7 @@ export function App() {
         </div>
       )}
       {me.data && (view === 'board' || !hasHousehold) && <HouseholdPanel />}
+      {me.data && hasHousehold && view === 'board' && <AgentTokens />}
 
       <p className="footer muted">
         {health.data

@@ -33,7 +33,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 - Owner: confirm on the live site: sign-in, household, invite, family and personal boards, activity feed, leaderboard, shopping list.
 - Restore drill: restore a nightly backup into a Neon branch or local Postgres and check it (see Deploy). Then phase 1 is done.
-- Agents (ADR-039, ADR-040). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members). Next: tokens in the web app; a local MCP server in `tools/FamilyApp.Mcp`; a `brain-dump` project skill that uses it. The owner writes the MCP tool definitions and the skill.
+- Agents (ADR-039, ADR-040). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members) and in the web app (Agent tokens, folded under the household card). Next: a local MCP server in `tools/FamilyApp.Mcp`; a `brain-dump` project skill that uses it. The owner writes the MCP tool definitions and the skill.
 - Phase 2, chosen by the owner: likely SignalR for the shopping list (ADR-018).
 
 **Follow-ups**
@@ -43,7 +43,6 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 - [ ] Pin the server's SSH host key as a secret instead of trusting it on each deploy (ADR-034).
 - [ ] Rate limiting, if availability ever matters (the owner prioritises cost, and an attack can't raise the bill). `/api/health` is public and queries Postgres on every call, so a flood could use up Neon's free compute hours and pause the database until next month. Options: cache or rate-limit `/api/health`, ASP.NET Core's rate limiter per IP for anonymous requests, Cloudflare's free plan in front.
 - [ ] Buy a real domain and move off sslip.io (then update the `DOMAIN` secret and the Google redirect URI).
-- [ ] Commit `web/package-lock.json` after the first local `npm install`, so builds are reproducible.
 
 **Decisions not visible in the code**
 
