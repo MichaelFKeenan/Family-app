@@ -14,6 +14,8 @@ public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbCon
 
     public DbSet<UserIdentity> UserIdentities => Set<UserIdentity>();
 
+    public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("identity");
@@ -44,7 +46,37 @@ public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbCon
             // Declared so EF inserts the user before its identity in the same SaveChanges.
             identity.HasOne<User>().WithMany().HasForeignKey(i => i.UserId);
         });
+
+        modelBuilder.Entity<AccessToken>(token =>
+        {
+            token.ToTable("access_tokens");
+            token.HasKey(t => t.Id);
+            token.Property(t => t.Id).HasColumnName("id").ValueGeneratedNever();
+            token.Property(t => t.UserId).HasColumnName("user_id");
+            token.Property(t => t.HouseholdId).HasColumnName("household_id");
+            token.Property(t => t.Name).HasColumnName("name");
+            token.Property(t => t.TokenHash).HasColumnName("token_hash");
+            token.Property(t => t.CreatedAt).HasColumnName("created_at");
+            token.Property(t => t.ExpiresAt).HasColumnName("expires_at");
+            token.Property(t => t.LastUsedAt).HasColumnName("last_used_at");
+            token.Property(t => t.RevokedAt).HasColumnName("revoked_at");
+            token.HasOne<User>().WithMany().HasForeignKey(t => t.UserId);
+        });
     }
+}
+
+/// <summary>A personal access token (ADR-039). Only its hash is kept.</summary>
+public sealed class AccessToken
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public Guid HouseholdId { get; set; }
+    public required string Name { get; set; }
+    public required byte[] TokenHash { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? LastUsedAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
 }
 
 public sealed class User

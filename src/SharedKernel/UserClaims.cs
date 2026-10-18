@@ -13,6 +13,12 @@ public static class UserClaims
 
     public const string DisplayName = "name";
 
+    /// <summary>
+    /// Only on access-token requests: the one household the token may act in (ADR-039).
+    /// When present, it decides the household and the <c>X-Household-Id</c> header is ignored.
+    /// </summary>
+    public const string HouseholdId = "household";
+
     public static bool TryGetUserId(this ClaimsPrincipal principal, out Guid userId)
     {
         userId = Guid.Empty;

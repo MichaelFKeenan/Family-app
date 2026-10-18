@@ -23,7 +23,7 @@ public sealed class ShoppingModule : IModule
 
     public void MapEndpoints(IEndpointRouteBuilder group)
     {
-        var shopping = group.MapGroup("").RequireHousehold();
+        var shopping = group.MapGroup("").RequireHousehold().AllowAccessTokens();
 
         // The active list: everything not yet ticked, oldest first.
         shopping.MapGet("", (ShoppingService service, CancellationToken ct) => service.ActiveAsync(ct));

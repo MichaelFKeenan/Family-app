@@ -49,8 +49,8 @@ public static class HouseholdEndpoints
 
     /// <summary>
     /// Requires a signed-in member of a household, and resolves which one:
-    /// the <see cref="HeaderName"/> header if sent (it must be one of the user's households),
-    /// otherwise the user's only household. Membership is checked on every request, so
+    /// an access token's own household, else the <see cref="HeaderName"/> header if sent (it must be
+    /// one of the user's households), otherwise the user's only household. Membership is checked on every request, so
     /// removing someone takes effect immediately.
     /// </summary>
     public static TBuilder RequireHousehold<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder
@@ -69,7 +69,16 @@ public static class HouseholdEndpoints
                 .GetHouseholdIdsAsync(userId, http.RequestAborted);
 
             Guid householdId;
-            if (http.Request.Headers.TryGetValue(HeaderName, out var header))
+            if (Guid.TryParse(http.User.FindFirst(UserClaims.HouseholdId)?.Value, out householdId))
+            {
+                // An access token is bound to one household (ADR-039). Membership is still checked,
+                // so the token stops working the moment its user leaves.
+                if (!households.Contains(householdId))
+                {
+                    return Results.Problem("You are not a member of this token's household.", statusCode: StatusCodes.Status403Forbidden);
+                }
+            }
+            else if (http.Request.Headers.TryGetValue(HeaderName, out var header))
             {
                 if (!Guid.TryParse(header.ToString(), out householdId))
                 {

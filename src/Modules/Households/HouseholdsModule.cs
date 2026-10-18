@@ -53,7 +53,8 @@ public sealed class HouseholdsModule : IModule
 
         group.MapGet("/members", async (CurrentHousehold current, HouseholdService households, CancellationToken cancellationToken) =>
             Results.Ok(await households.GetMembersAsync(current.Id, cancellationToken)))
-            .RequireHousehold();
+            .RequireHousehold()
+            .AllowAccessTokens(); // agents need it to pick assignees (ADR-039)
 
         group.MapPost("/invites", async (CurrentHousehold current, ClaimsPrincipal principal, HouseholdService households, CancellationToken cancellationToken) =>
         {

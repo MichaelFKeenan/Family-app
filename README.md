@@ -33,7 +33,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 - Owner: confirm on the live site: sign-in, household, invite, family and personal boards, activity feed, leaderboard, shopping list.
 - Restore drill: restore a nightly backup into a Neon branch or local Postgres and check it (see Deploy). Then phase 1 is done.
-- Agents (ADR-039, ADR-040): personal access tokens in the API, then in the web app; a local MCP server in `tools/FamilyApp.Mcp`; a `brain-dump` project skill that uses it. The owner writes the bearer auth handler, the tool definitions and the skill.
+- Agents (ADR-039, ADR-040). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members). Next: tokens in the web app; a local MCP server in `tools/FamilyApp.Mcp`; a `brain-dump` project skill that uses it. The owner writes the MCP tool definitions and the skill.
 - Phase 2, chosen by the owner: likely SignalR for the shopping list (ADR-018).
 
 **Follow-ups**

@@ -29,7 +29,7 @@ public sealed class TasksModule : IModule
     public void MapEndpoints(IEndpointRouteBuilder group)
     {
         // Every endpoint here acts on the current household; resolving it happens once, here.
-        var tasks = group.MapGroup("").RequireHousehold();
+        var tasks = group.MapGroup("").RequireHousehold().AllowAccessTokens();
 
         // status is bound as a string: minimal APIs parse query-string enums case-sensitively,
         // and the API's enums are lower-case ("todo"), so we parse it ourselves.

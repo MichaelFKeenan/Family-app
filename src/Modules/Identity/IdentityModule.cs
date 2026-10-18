@@ -36,8 +36,12 @@ public sealed class IdentityModule : IModule
         services.AddModuleDbContext<IdentityModuleDbContext>();
         services.AddScoped<IdentityService>();
         services.AddScoped<IUserDirectory, UserDirectory>();
+        services.AddScoped<AccessTokenService>();
 
         var authentication = services.AddAuthentication(CookieScheme);
+
+        // Not the default scheme: only endpoints that opt in with .AllowAccessTokens() run it (ADR-039).
+        authentication.AddScheme<AuthenticationSchemeOptions, AccessTokenAuthenticationHandler>(AccessTokens.Scheme, _ => { });
 
         authentication.AddCookie(CookieScheme, options =>
         {
@@ -145,6 +149,39 @@ public sealed class IdentityModule : IModule
             var user = await users.GetUserAsync(userId, cancellationToken);
             return user is null ? Results.Unauthorized() : Results.Ok(user);
         }).RequireAuthorization();
+
+        // Access tokens for agents (ADR-039). Cookie only, deliberately: a token can never mint,
+        // list or revoke tokens. A token belongs to the household the request resolves to.
+        var tokens = group.MapGroup("/tokens").RequireHousehold();
+
+        tokens.MapPost("", async (CreateAccessTokenRequest request, ClaimsPrincipal principal, CurrentHousehold household, AccessTokenService service, CancellationToken ct) =>
+        {
+            var name = request.Name?.Trim();
+            if (string.IsNullOrEmpty(name) || name.Length > AccessTokenService.MaxNameLength)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["name"] = [$"Give the token a name of 1 to {AccessTokenService.MaxNameLength} characters, such as \"laptop Claude Code\"."],
+                });
+            }
+
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
+            var created = await service.CreateAsync(userId, household.Id, name, ct);
+            return Results.Created($"/api/identity/tokens/{created.Id}", created);
+        });
+
+        tokens.MapGet("", async (ClaimsPrincipal principal, CurrentHousehold household, AccessTokenService service, CancellationToken ct) =>
+        {
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
+            return Results.Ok(await service.ListAsync(userId, household.Id, ct));
+        });
+
+        // A command, not DELETE: the row stays so the list can show when it was revoked (ADR-014).
+        tokens.MapPost("/{id:guid}/revoke", async (Guid id, ClaimsPrincipal principal, AccessTokenService service, CancellationToken ct) =>
+        {
+            if (!principal.TryGetUserId(out var userId)) return Results.Unauthorized();
+            return await service.RevokeAsync(userId, id, ct) ? Results.NoContent() : Results.NotFound();
+        });
     }
 
     private static ClaimsPrincipal CreatePrincipal(UserProfile user) =>
