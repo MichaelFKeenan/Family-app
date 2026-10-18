@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol;
@@ -81,7 +82,8 @@ public sealed class FamilyApi(HttpClient http)
         {
             HttpStatusCode.Unauthorized =>
                 "The Family Board rejected the access token: it is missing, unknown, revoked or expired. " +
-                "Ask the user to create a new one in the app (Family tab, Agent tokens) and set FAMILY_API_TOKEN.",
+                "Ask the user to create a new one in the app (Family tab, Agent tokens) and put it in this MCP server's " +
+                "settings: FAMILY_API_TOKEN for the local server, the Authorization header for the hosted one.",
             HttpStatusCode.Forbidden => $"Not allowed: {detail ?? "the token's user is no longer in this household."}",
             HttpStatusCode.NotFound => "Not found. It may have been deleted, or the id is wrong; list again to get current ids.",
             HttpStatusCode.Conflict =>
@@ -94,26 +96,59 @@ public sealed class FamilyApi(HttpClient http)
     private sealed record Problem(string? Title, string? Detail, Dictionary<string, string[]>? Errors);
 }
 
+/// <summary>Whose access token the API calls carry.</summary>
+public enum FamilyApiToken
+{
+    /// <summary>Local mode (ADR-040): FAMILY_API_TOKEN, the one user who started the server.</summary>
+    FromEnvironment,
+
+    /// <summary>
+    /// Hosted mode (ADR-041): the Authorization header of the MCP request being served, so each call acts
+    /// as whoever made it. The server holds no token of its own; FAMILY_API_TOKEN is ignored.
+    /// </summary>
+    FromCaller,
+}
+
 public static class FamilyApiRegistration
 {
     public const string DefaultUrl = "https://65-109-172-182.sslip.io";
 
     /// <summary>
-    /// FAMILY_API_URL (defaults to the live site) and FAMILY_API_TOKEN come from the environment,
-    /// which .mcp.json fills from the user's own shell, so no secret is ever in the repo.
+    /// FAMILY_API_URL defaults to the live site; the hosted server sets it to the app on the private
+    /// network. Locally FAMILY_API_TOKEN comes from the environment, which .mcp.json fills from the
+    /// user's own shell, so no secret is ever in the repo.
     /// </summary>
-    public static IServiceCollection AddFamilyApi(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddFamilyApi(this IServiceCollection services, IConfiguration configuration, FamilyApiToken token)
     {
-        services.AddHttpClient<FamilyApi>(http =>
+        var client = services.AddHttpClient<FamilyApi>(http =>
         {
             http.BaseAddress = new Uri(configuration["FAMILY_API_URL"] is { Length: > 0 } url ? url : DefaultUrl);
-            if (configuration["FAMILY_API_TOKEN"] is { Length: > 0 } token)
+            if (token == FamilyApiToken.FromEnvironment && configuration["FAMILY_API_TOKEN"] is { Length: > 0 } value)
             {
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", value);
             }
             // No token: start anyway. The first tool call gets a 401, which says how to fix it,
             // and that reaches the user through the agent; a crash on startup would not.
         });
+
+        if (token == FamilyApiToken.FromCaller)
+        {
+            services.AddTransient<ForwardCallerToken>();
+            client.AddHttpMessageHandler<ForwardCallerToken>();
+        }
         return services;
+    }
+}
+
+/// <summary>Copies the MCP request's Authorization header onto the API call it causes (ADR-041).</summary>
+internal sealed class ForwardCallerToken(IHttpContextAccessor accessor) : DelegatingHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (accessor.HttpContext?.Request.Headers.Authorization.ToString() is { Length: > 0 } header)
+        {
+            request.Headers.Authorization = AuthenticationHeaderValue.Parse(header);
+        }
+        return base.SendAsync(request, cancellationToken);
     }
 }

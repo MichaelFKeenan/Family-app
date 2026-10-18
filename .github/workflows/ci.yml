@@ -187,12 +187,25 @@ jobs:
         if: steps.ready.outputs.ok == 'true'
         run: |
           # The first deploy waits for Caddy to get a certificate, so allow a couple of minutes.
+          healthy=false
           for i in $(seq 1 18); do
-            if curl -fsS "https://$DOMAIN/api/health"; then echo; exit 0; fi
+            if curl -fsS "https://$DOMAIN/api/health"; then echo; healthy=true; break; fi
             sleep 10
           done
-          echo "::error::https://$DOMAIN/api/health did not report healthy"
-          ssh server 'cd /opt/family-app && docker compose ps && docker compose logs --tail 40 app caddy' || true
+          if [ "$healthy" != true ]; then
+            echo "::error::https://$DOMAIN/api/health did not report healthy"
+            ssh server 'cd /opt/family-app && docker compose ps && docker compose logs --tail 40 app caddy' || true
+            exit 1
+          fi
+          # The MCP server (ADR-041) is up if it turns away a request without a token. That 401 comes
+          # from the MCP container itself, so it touches neither the app nor the database.
+          for i in $(seq 1 6); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "https://$DOMAIN/mcp")
+            if [ "$status" = 401 ]; then echo "MCP server answered 401 without a token, as it should."; exit 0; fi
+            sleep 5
+          done
+          echo "::error::https://$DOMAIN/mcp answered $status without a token; expected 401"
+          ssh server 'cd /opt/family-app && docker compose ps && docker compose logs --tail 40 mcp caddy' || true
           exit 1
 
       # Shows the newest nightly backup on the run page, so a backup that stopped working is noticed (ADR-036).

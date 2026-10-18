@@ -15,11 +15,27 @@ services:
     expose:
       - "8080"
 
+  # The MCP server for agents (ADR-041): the same image as the app, so one tag deploys matching
+  # versions of both. Deliberately no env_file: it holds no secrets. Each caller's access token is
+  # forwarded to the app, which checks it.
+  mcp:
+    image: ${IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    command: ["dotnet", "mcp/FamilyApp.Mcp.dll", "--http"]
+    depends_on:
+      - app
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      FAMILY_API_URL: http://app:8080
+    expose:
+      - "8080"
+
   caddy:
     image: caddy:2
     restart: unless-stopped
     depends_on:
       - app
+      - mcp
     ports:
       - "80:80"
       - "443:443"

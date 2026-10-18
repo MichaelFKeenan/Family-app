@@ -6,7 +6,7 @@ Design doc and decision log: https://claude.ai/code/artifact/d76d14ee-5270-4a19-
 
 ## Status
 
-_Last updated: 13 Oct 2026. Update this section in the same commit that finishes a step._
+_Last updated: 18 Oct 2026. Update this section in the same commit that finishes a step._
 
 **Live:** https://65-109-172-182.sslip.io on a fixed-price Hetzner server (ADR-034), first deployed 13 Oct 2026. Every green push to `main` deploys automatically.
 
@@ -33,7 +33,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 - Owner: confirm on the live site: sign-in, household, invite, family and personal boards, activity feed, leaderboard, shopping list.
 - Restore drill: restore a nightly backup into a Neon branch or local Postgres and check it (see Deploy). Then phase 1 is done.
-- Agents (ADR-039, ADR-040). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members) and in the web app (Agent tokens, folded under the household card). MCP server in `tools/FamilyApp.Mcp`: 13 tools (shopping list, add, tick, not needed; tasks list, create, edit, assign, start, complete, reopen; categories; members), tested over stdio against a fake API; `.mcp.json`. Next, owner: the `brain-dump` skill in `.claude/skills/`.
+- Agents (ADR-039, ADR-040, ADR-041). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members) and in the web app (Agent tokens, folded under the household card). MCP server in `tools/FamilyApp.Mcp`: 13 tools (shopping list, add, tick, not needed; tasks list, create, edit, assign, start, complete, reopen; categories; members), tested over stdio against a fake API; `.mcp.json`. `brain-dump` skill in `.claude/skills/`: sorts a list into tasks and shopping items, shows a plan, writes after confirmation. Hosted MCP server at `/mcp` for any MCP client with a bearer token (ADR-041): same image, second Compose service, forwards each caller's token to the API; the deploy smoke test checks it answers 401 without a token. Next, owner: connect a client to the hosted server (see "Use it from an agent"), and try `brain-dump` on a real brain-dump. Later: OAuth so claude.ai, ChatGPT and phones can connect (its own ADR).
 - Phase 2, chosen by the owner: likely SignalR for the shopping list (ADR-018).
 
 **Follow-ups**
@@ -80,13 +80,32 @@ npm run dev
 
 Open http://localhost:5173. Google must list `http://localhost:5173/signin-google` as a redirect URI.
 
-## Use it from Claude Code (MCP)
+## Use it from an agent (MCP)
 
-`tools/FamilyApp.Mcp` is a local MCP server that lets Claude Code read and change the board and shopping list (ADR-040). `.mcp.json` registers it for this repo.
+`tools/FamilyApp.Mcp` lets agents read and change the board and shopping list. The same tools run in two ways: hosted at `/mcp` on the live site for any MCP client (ADR-041), or locally for Claude Code in this repo (ADR-040). Both need an access token: in the app, Family tab, open Agent tokens and create one. Copy it; it is shown once. Each token acts as you, in one household; revoke it there when a machine or agent no longer needs it.
 
-1. In the app, Family tab, open Agent tokens and create one. Copy it; it is shown once.
-2. Put it in your user environment, never in the repo. On Windows: `setx FAMILY_API_TOKEN fb_...`, then restart your terminal.
-3. Start Claude Code in this repo and approve the `family-board` server. `/mcp` shows it and its tools.
+### Hosted: any MCP client, any machine
+
+Point the client at `https://65-109-172-182.sslip.io/mcp` (Streamable HTTP) and send the header `Authorization: Bearer fb_...`. For Claude Code:
+
+```
+claude mcp add --transport http --scope user family-board-hosted https://65-109-172-182.sslip.io/mcp --header "Authorization: Bearer fb_..."
+```
+
+Clients configured by JSON (Cursor, VS Code and others) take the same URL and header:
+
+```json
+{ "url": "https://65-109-172-182.sslip.io/mcp", "headers": { "Authorization": "Bearer fb_..." } }
+```
+
+The token sits in that client's config file in plain text, so use one token per machine. Consumer chat apps (claude.ai, ChatGPT, phones) can't connect yet: they need OAuth, which is a separate step.
+
+### Local: Claude Code in this repo
+
+`.mcp.json` registers the local server for this repo.
+
+1. Put your token in your user environment, never in the repo. On Windows: `setx FAMILY_API_TOKEN fb_...`, then restart your terminal.
+2. Start Claude Code in this repo and approve the `family-board` server. `/mcp` shows it and its tools.
 
 It calls the live site by default. To use a local API, also set `FAMILY_API_URL=http://localhost:5080` (create the token in the local app too).
 

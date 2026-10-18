@@ -52,7 +52,7 @@ public sealed class McpTestServer : IAsyncDisposable
     /// The MCP project's own build output, same configuration as this test run. Not the copy beside the
     /// tests: that folder is laid out for an ASP.NET Core app, so the server's own dependencies are missing.
     /// </summary>
-    private static string ServerDll()
+    internal static string ServerDll()
     {
         var testOutput = new DirectoryInfo(AppContext.BaseDirectory);   // .../bin/{Configuration}/net10.0/
         var configuration = testOutput.Parent!.Name;
