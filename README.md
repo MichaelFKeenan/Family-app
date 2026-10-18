@@ -34,7 +34,7 @@ _Last updated: 18 Oct 2026. Update this section in the same commit that finishes
 
 **Next**
 
-- Phase 2 ("Daily use" on the roadmap), still to do: recurring chores (decide the model first, design doc open question), then PWA and alerts (install to home screen, notifications).
+- Phase 2 ("Daily use" on the roadmap). Chosen next by the owner (18 Oct 2026): push notifications. Start with an ADR (Web Push with our own VAPID keys, which events alert whom, how to keep it quiet), then the PWA (manifest, service worker; iPhones only allow push from an installed app), then subscriptions and sending. After that: recurring chores (decide the model first; the open question is in the design doc).
 - Agents, later: OAuth so claude.ai, ChatGPT and phone apps can connect to the hosted MCP server (its own ADR; see ADR-041).
 
 **Follow-ups**
