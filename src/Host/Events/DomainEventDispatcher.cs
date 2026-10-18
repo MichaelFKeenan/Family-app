@@ -17,12 +17,17 @@ public sealed class DomainEventDispatcher(
     // A handler that raises an event that triggers itself would loop forever.
     private const int MaxEventsPerRequest = 100;
 
+    private readonly List<IDomainEvent> _dispatched = [];
+
+    /// <summary>Every event dispatched in this request, for live updates once it commits (ADR-042).</summary>
+    public IReadOnlyList<IDomainEvent> Dispatched => _dispatched;
+
     public async Task DispatchAsync(CancellationToken cancellationToken)
     {
-        var dispatched = 0;
         while (events.TryDequeue(out var domainEvent))
         {
-            if (++dispatched > MaxEventsPerRequest)
+            _dispatched.Add(domainEvent);
+            if (_dispatched.Count > MaxEventsPerRequest)
             {
                 throw new InvalidOperationException(
                     $"More than {MaxEventsPerRequest} events in one request; a handler is probably re-raising its own event.");

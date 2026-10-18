@@ -1,4 +1,5 @@
 using FamilyApp.Host.Events;
+using FamilyApp.Host.Live;
 using FamilyApp.SharedKernel.Persistence;
 
 namespace FamilyApp.Host.Database;
@@ -34,8 +35,12 @@ public static class WriteTransaction
 
                 if (Succeeded(result))
                 {
-                    await http.RequestServices.GetRequiredService<DomainEventDispatcher>().DispatchAsync(http.RequestAborted);
+                    var dispatcher = http.RequestServices.GetRequiredService<DomainEventDispatcher>();
+                    await dispatcher.DispatchAsync(http.RequestAborted);
                     await session.CommitAsync(http.RequestAborted);
+
+                    // Only now is the change real, so only now tell the other screens (ADR-042).
+                    await http.RequestServices.GetRequiredService<LiveUpdates>().PublishAsync(dispatcher.Dispatched);
                 }
                 else
                 {

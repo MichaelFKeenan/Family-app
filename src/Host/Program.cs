@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FamilyApp.Host.Database;
 using FamilyApp.Host.Events;
 using FamilyApp.Host.Health;
+using FamilyApp.Host.Live;
 using FamilyApp.Host.Security;
 using FamilyApp.Modules.Households;
 using FamilyApp.Modules.Identity;
@@ -61,6 +62,10 @@ builder.Services.AddScoped<DomainEvents>();
 builder.Services.AddScoped<DomainEventDispatcher>();
 builder.Services.AddScoped<ActivityLog>();
 
+// Live updates: a SignalR hub that tells browsers which queries to refetch after a change commits (ADR-042).
+builder.Services.AddSignalR();
+builder.Services.AddScoped<LiveUpdates>();
+
 builder.Services.AddSingleton<MigrationRunner>();
 foreach (var source in migrationSources)
 {
@@ -113,6 +118,9 @@ app.MapHealthChecks("/api/health", new HealthCheckOptions
 
 var api = app.MapGroup("/api").UseWriteTransactions();
 api.MapActivity();
+
+// Cookie only, like the default for every endpoint: agents call the API when asked and need no pushes.
+app.MapHub<LiveHub>("/api/live").RequireAuthorization();
 foreach (var module in modules)
 {
     module.MapEndpoints(api.MapGroup($"/{module.Name}"));

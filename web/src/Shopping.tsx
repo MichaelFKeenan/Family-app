@@ -10,10 +10,9 @@ const CHECKED = ['shopping', 'checked'];
 // so ticking is optimistic: the item leaves the list at once and comes back if the server refuses.
 export function Shopping() {
   const queryClient = useQueryClient();
-  // Refetch every 15 s while the page is visible, so two people shopping see each other's ticks.
-  // TanStack Query pauses this when the tab is hidden, so an idle phone doesn't keep Neon awake.
-  const active = useQuery({ queryKey: ACTIVE, queryFn: api.shopping, refetchInterval: 15_000 });
-  const checked = useQuery({ queryKey: CHECKED, queryFn: () => api.recentlyChecked(10), refetchInterval: 15_000 });
+  // No polling: another person's tick arrives as a live update (ADR-042).
+  const active = useQuery({ queryKey: ACTIVE, queryFn: api.shopping });
+  const checked = useQuery({ queryKey: CHECKED, queryFn: () => api.recentlyChecked(10) });
   const members = useQuery({ queryKey: ['members'], queryFn: api.members });
 
   const [error, setError] = useState<string | null>(null);

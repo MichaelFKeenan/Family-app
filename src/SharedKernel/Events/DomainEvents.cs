@@ -50,3 +50,12 @@ public abstract class DomainEventHandler<TEvent> : IDomainEventHandler where TEv
 
     public abstract Task HandleAsync(TEvent domainEvent, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// An event about a task on a board: <see cref="OwnerId"/> is null for the family board, or the owner of a
+/// personal board (ADR-037). Readers of these events must show personal ones only to their owner.
+/// </summary>
+public interface IBoardEvent : IDomainEvent
+{
+    Guid? OwnerId { get; }
+}

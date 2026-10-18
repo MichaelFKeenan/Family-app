@@ -4,7 +4,7 @@ import { LoadError } from './Problem';
 
 // Each entry is a domain event from the activity log (ADR-005), rendered as a sentence.
 export function Activity() {
-  const activity = useQuery({ queryKey: ['activity'], queryFn: () => api.activity(30), refetchInterval: 30_000 });
+  const activity = useQuery({ queryKey: ['activity'], queryFn: () => api.activity(30) });
   const members = useQuery({ queryKey: ['members'], queryFn: api.members });
 
   // Points changes are already visible in the completion line ("… (5 pts)") and on the leaderboard.

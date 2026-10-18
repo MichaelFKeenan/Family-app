@@ -8,7 +8,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:5080',
+      // ws: live updates use a WebSocket to /api/live (ADR-042).
+      '/api': { target: 'http://localhost:5080', ws: true },
       // Google redirects back here after sign-in; the .NET host handles it.
       '/signin-google': 'http://localhost:5080',
     },

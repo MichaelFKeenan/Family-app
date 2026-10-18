@@ -26,6 +26,7 @@ _Last updated: 18 Oct 2026. Update this section in the same commit that finishes
 - Hosting moved to Hetzner (ADR-034): `infra/` holds the server's first-boot config, Docker Compose file and Caddy config; CI pushes images to GitHub's registry and deploys over SSH.
 - Agents (ADR-039, ADR-040, ADR-041): personal access tokens (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members; Agent tokens in the web app). MCP server in `tools/FamilyApp.Mcp` with 13 tools (no deletes), run locally over stdio (`.mcp.json`) or hosted at `/mcp` for any MCP client with a bearer token: same image, second Compose service, forwards each caller's token to the API. `brain-dump` skill in `.claude/skills/`. Tried by the owner on 18 Oct 2026.
 - **Phase 1 done, 18 Oct 2026:** the owner checked the live site end to end, and the restore drill restored a nightly backup successfully.
+- Phase 2, step 1: live updates (ADR-042). SignalR hub at `/api/live` (cookie only); after a write commits, each household (or, for personal tasks, the owner) gets one `changed` message naming the stale query keys, and browsers refetch them through the API. A `ready` message after joining groups triggers a full refetch, covering reconnects. Interval polling removed.
 
 **Open questions**
 
@@ -33,7 +34,8 @@ _Last updated: 18 Oct 2026. Update this section in the same commit that finishes
 
 **Next**
 
-- Phase 2, chosen by the owner: likely SignalR for the shopping list (ADR-018).
+- Owner: try live updates on two phones (tick something in the shop and watch the other screen).
+- Phase 2, next step: owner to choose (open questions in the design doc: recurring tasks, board columns).
 - Agents, later: OAuth so claude.ai, ChatGPT and phone apps can connect to the hosted MCP server (its own ADR; see ADR-041).
 
 **Follow-ups**

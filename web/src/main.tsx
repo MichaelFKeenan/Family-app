@@ -5,8 +5,8 @@ import { ApiError } from './api';
 import { App } from './App';
 import './index.css';
 
-// Server state lives in TanStack Query. Refetch on window focus is on by default,
-// which is our v1 stand-in for real-time updates (ADR-017).
+// Server state lives in TanStack Query. Live updates mark queries stale when someone else changes
+// something (ADR-042, live.ts); refetch on window focus, on by default, is the safety net.
 const queryClient: QueryClient = new QueryClient({
   // A 401 on any call means the 30-day session ran out (ADR-022). Re-asking "who am I?" flips the
   // app to the sign-in screen, instead of every panel showing its own error.

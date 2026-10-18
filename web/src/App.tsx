@@ -6,6 +6,7 @@ import { AgentTokens } from './AgentTokens';
 import { Board } from './Board';
 import { HouseholdPanel } from './HouseholdPanel';
 import { Leaderboard } from './Leaderboard';
+import { useLiveUpdates } from './live';
 import { OfflineBanner } from './Problem';
 import { Shopping } from './Shopping';
 
@@ -21,6 +22,7 @@ export function App() {
   });
 
   const hasHousehold = (households.data?.length ?? 0) > 0;
+  useLiveUpdates(hasHousehold ? households.data!.map((h) => h.id).join(',') : null);
   const view = useView();
 
   return (
