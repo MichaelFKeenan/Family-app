@@ -24,6 +24,8 @@ _Last updated: 18 Oct 2026. Update this section in the same commit that finishes
 - Personal boards ("Mine" tab): private to each member, no points, open tasks move between boards (ADR-037).
 - CI screenshots the UI against mock data and pushes them to the `screenshots` branch, so the UI can be checked without running it.
 - Hosting moved to Hetzner (ADR-034): `infra/` holds the server's first-boot config, Docker Compose file and Caddy config; CI pushes images to GitHub's registry and deploys over SSH.
+- Agents (ADR-039, ADR-040, ADR-041): personal access tokens (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members; Agent tokens in the web app). MCP server in `tools/FamilyApp.Mcp` with 13 tools (no deletes), run locally over stdio (`.mcp.json`) or hosted at `/mcp` for any MCP client with a bearer token: same image, second Compose service, forwards each caller's token to the API. `brain-dump` skill in `.claude/skills/`. Tried by the owner on 18 Oct 2026.
+- **Phase 1 done, 18 Oct 2026:** the owner checked the live site end to end, and the restore drill restored a nightly backup successfully.
 
 **Open questions**
 
@@ -31,17 +33,15 @@ _Last updated: 18 Oct 2026. Update this section in the same commit that finishes
 
 **Next**
 
-- Owner: confirm on the live site: sign-in, household, invite, family and personal boards, activity feed, leaderboard, shopping list.
-- Restore drill: restore a nightly backup into a Neon branch or local Postgres and check it (see Deploy). Then phase 1 is done.
-- Agents (ADR-039, ADR-040, ADR-041). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members) and in the web app (Agent tokens, folded under the household card). MCP server in `tools/FamilyApp.Mcp`: 13 tools (shopping list, add, tick, not needed; tasks list, create, edit, assign, start, complete, reopen; categories; members), tested over stdio against a fake API; `.mcp.json`. `brain-dump` skill in `.claude/skills/`: sorts a list into tasks and shopping items, shows a plan, writes after confirmation. Hosted MCP server at `/mcp` for any MCP client with a bearer token (ADR-041): same image, second Compose service, forwards each caller's token to the API; the deploy smoke test checks it answers 401 without a token. Next, owner: connect a client to the hosted server (see "Use it from an agent"), and try `brain-dump` on a real brain-dump. Later: OAuth so claude.ai, ChatGPT and phones can connect (its own ADR).
 - Phase 2, chosen by the owner: likely SignalR for the shopping list (ADR-018).
+- Agents, later: OAuth so claude.ai, ChatGPT and phone apps can connect to the hosted MCP server (its own ADR; see ADR-041).
 
 **Follow-ups**
 
 - [ ] Reset the Neon database password (it was shared in a chat), then update the `NEON_CONNECTION_STRING` GitHub secret.
 - [ ] Delete the Fly app and the `FLY_API_TOKEN` GitHub secret (no longer used).
 - [ ] Pin the server's SSH host key as a secret instead of trusting it on each deploy (ADR-034).
-- [ ] Rate limiting, if availability ever matters (the owner prioritises cost, and an attack can't raise the bill). `/api/health` is public and queries Postgres on every call, so a flood could use up Neon's free compute hours and pause the database until next month. Options: cache or rate-limit `/api/health`, ASP.NET Core's rate limiter per IP for anonymous requests, Cloudflare's free plan in front.
+- [ ] Rate limiting, if availability ever matters (the owner prioritises cost, and an attack can't raise the bill). `/api/health` is public and queries Postgres on every call, as does each `/mcp` call with a bad token, so a flood could use up Neon's free compute hours and pause the database until next month. Options: cache or rate-limit `/api/health`, ASP.NET Core's rate limiter per IP for anonymous requests, Cloudflare's free plan in front.
 - [ ] Buy a real domain and move off sslip.io (then update the `DOMAIN` secret and the Google redirect URI).
 
 **Decisions not visible in the code**
