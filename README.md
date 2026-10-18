@@ -33,7 +33,7 @@ _Last updated: 13 Oct 2026. Update this section in the same commit that finishes
 
 - Owner: confirm on the live site: sign-in, household, invite, family and personal boards, activity feed, leaderboard, shopping list.
 - Restore drill: restore a nightly backup into a Neon branch or local Postgres and check it (see Deploy). Then phase 1 is done.
-- Agents (ADR-039, ADR-040). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members) and in the web app (Agent tokens, folded under the household card). Next: a local MCP server in `tools/FamilyApp.Mcp`; a `brain-dump` project skill that uses it. The owner writes the MCP tool definitions and the skill.
+- Agents (ADR-039, ADR-040). Done: personal access tokens in the API (`/api/identity/tokens`, `.AllowAccessTokens()` on tasks, shopping and members) and in the web app (Agent tokens, folded under the household card). MCP server plumbing in `tools/FamilyApp.Mcp` with `list_shopping` as the example, tests that run it over stdio against a fake API, `.mcp.json`. Next, owner: the remaining tools (shopping add, tick, not needed; tasks list, create, edit, start, complete, reopen; categories; members), then the `brain-dump` skill.
 - Phase 2, chosen by the owner: likely SignalR for the shopping list (ADR-018).
 
 **Follow-ups**
@@ -79,6 +79,16 @@ npm run dev
 ```
 
 Open http://localhost:5173. Google must list `http://localhost:5173/signin-google` as a redirect URI.
+
+## Use it from Claude Code (MCP)
+
+`tools/FamilyApp.Mcp` is a local MCP server that lets Claude Code read and change the board and shopping list (ADR-040). `.mcp.json` registers it for this repo.
+
+1. In the app, Family tab, open Agent tokens and create one. Copy it; it is shown once.
+2. Put it in your user environment, never in the repo. On Windows: `setx FAMILY_API_TOKEN fb_...`, then restart your terminal.
+3. Start Claude Code in this repo and approve the `family-board` server. `/mcp` shows it and its tools.
+
+It calls the live site by default. To use a local API, also set `FAMILY_API_URL=http://localhost:5080` (create the token in the local app too).
 
 ## Test
 

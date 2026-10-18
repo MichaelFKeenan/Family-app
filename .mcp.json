@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "family-board": {
+      "command": "dotnet",
+      "args": ["run", "--project", "tools/FamilyApp.Mcp", "--verbosity", "quiet"],
+      "env": {
+        "FAMILY_API_URL": "${FAMILY_API_URL:-https://65-109-172-182.sslip.io}",
+        "FAMILY_API_TOKEN": "${FAMILY_API_TOKEN:-}"
+      }
+    }
+  }
+}

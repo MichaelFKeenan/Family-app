@@ -10,8 +10,12 @@
     <Project Path="src/Modules/Shopping/FamilyApp.Modules.Shopping.csproj" />
     <Project Path="src/Modules/Points/FamilyApp.Modules.Points.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/FamilyApp.Mcp/FamilyApp.Mcp.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Architecture.Tests/FamilyApp.Architecture.Tests.csproj" />
     <Project Path="tests/Integration.Tests/FamilyApp.Integration.Tests.csproj" />
+    <Project Path="tests/Mcp.Tests/FamilyApp.Mcp.Tests.csproj" />
   </Folder>
 </Solution>

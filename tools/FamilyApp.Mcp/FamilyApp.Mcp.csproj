@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    A local MCP server that Claude Code starts over stdio (ADR-040). It calls the Family Board API
+    over HTTP with an access token (ADR-039), like any other client. It must never reference
+    src/Modules or the Host; ModuleBoundaryTests checks that. Not part of the Docker image.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FamilyApp.Mcp.Tests" />
+  </ItemGroup>
+</Project>

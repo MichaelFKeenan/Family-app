@@ -17,5 +17,6 @@
     <ProjectReference Include="..\..\src\Modules\Tasks\FamilyApp.Modules.Tasks.csproj" />
     <ProjectReference Include="..\..\src\Modules\Shopping\FamilyApp.Modules.Shopping.csproj" />
     <ProjectReference Include="..\..\src\Modules\Points\FamilyApp.Modules.Points.csproj" />
+    <ProjectReference Include="..\..\tools\FamilyApp.Mcp\FamilyApp.Mcp.csproj" />
   </ItemGroup>
 </Project>

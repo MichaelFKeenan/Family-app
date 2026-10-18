@@ -1,4 +1,5 @@
 using System.Reflection;
+using FamilyApp.Mcp;
 using FamilyApp.Modules.Households;
 using FamilyApp.Modules.Identity;
 using FamilyApp.Modules.Points;
@@ -60,6 +61,19 @@ public class ModuleBoundaryTests
             .ToList();
 
         Assert.Empty(offending);
+    }
+
+    [Fact]
+    public void Mcp_server_uses_only_the_http_api()
+    {
+        // The MCP server is just another API client (ADR-040): going through HTTP gives agents the same
+        // checks as people. Referencing the modules, the host or SharedKernel would bypass them.
+        var offending = typeof(FamilyApi).Assembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name!)
+            .Where(name => name.StartsWith("FamilyApp.", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(offending.Count == 0, $"FamilyApp.Mcp references {string.Join(", ", offending)}. Call the API instead.");
     }
 
     [Fact]
